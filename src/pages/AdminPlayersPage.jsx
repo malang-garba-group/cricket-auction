@@ -30,7 +30,8 @@ const AdminPlayersPage = () => {
     dob: '', area: '', gender: '',
     player_role: '', batting_style: '', bowling_style: '',
     photo: null, aadhar: null,
-    is_icon: false
+    is_icon: false,
+    is_owner: false
   };
   const [formData, setFormData] = useState(initialFormState);
 
@@ -86,6 +87,7 @@ const AdminPlayersPage = () => {
               auction_player_id: ap.id,
               approval_status: ap.approval_status,
               is_icon: ap.is_icon || false,
+              is_owner: ap.is_owner || false,
               player_number: ap.player_number ?? null
             };
           });
@@ -121,6 +123,33 @@ const AdminPlayersPage = () => {
     } catch (err) {
       console.error(err);
       alert('Failed to update status');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const toggleOwnerStatus = async (auctionPlayerId, currentStatus) => {
+    try {
+      setActionLoading(true);
+      const newOwnerStatus = !currentStatus;
+
+      const updatePayload = { is_owner: newOwnerStatus };
+      if (!newOwnerStatus) {
+        updatePayload.team_id = null;
+      }
+
+      const { error } = await supabase
+        .from('auction_players')
+        .update(updatePayload)
+        .eq('id', auctionPlayerId);
+
+      if (error) throw error;
+      setPlayersList(prev => prev.map(p => p.auction_player_id === auctionPlayerId ? { ...p, is_owner: newOwnerStatus } : p));
+
+      if (!newOwnerStatus) await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update owner status');
     } finally {
       setActionLoading(false);
     }
@@ -189,7 +218,8 @@ const AdminPlayersPage = () => {
       dob: p.dob || '', area: p.area || '', gender: p.gender || '',
       player_role: p.player_role || '', batting_style: p.batting_style || '', bowling_style: p.bowling_style || '',
       photo: null, aadhar: null,
-      is_icon: p.is_icon || false
+      is_icon: p.is_icon || false,
+      is_owner: p.is_owner || false
     });
     setFormError('');
     setShowForm(true);
@@ -269,9 +299,12 @@ const AdminPlayersPage = () => {
         const { error: updateError } = await supabase.from('players').update(playerPayload).eq('id', editingPlayer.id);
         if (updateError) throw updateError;
 
-        // UPDATE auction_players specifically for is_icon
-        const apUpdatePayload = { is_icon: formData.is_icon || false };
-        if (!formData.is_icon) {
+        // UPDATE auction_players specifically for is_icon and is_owner
+        const apUpdatePayload = {
+          is_icon: formData.is_icon || false,
+          is_owner: formData.is_owner || false
+        };
+        if (!formData.is_icon && !formData.is_owner) {
           apUpdatePayload.team_id = null;
         }
 
@@ -302,6 +335,7 @@ const AdminPlayersPage = () => {
           player_id: newPlayerData.id,
           approval_status: 'approved', // Automatically auto-approve Admins directly adding players
           is_icon: formData.is_icon || false,
+          is_owner: formData.is_owner || false,
           player_number: nextNumber
         }]);
         if (apError) throw apError;
@@ -332,7 +366,7 @@ const AdminPlayersPage = () => {
       // 1. Get all auction_players for this auction
       const { data: allPlayers, error: fetchErr } = await supabase
         .from('auction_players')
-        .select('id, player_number, is_icon, created_at')
+        .select('id, player_number, is_icon, is_owner, created_at')
         .eq('auction_id', activeAuction.id);
 
       if (fetchErr) throw fetchErr;
@@ -341,13 +375,13 @@ const AdminPlayersPage = () => {
         return;
       }
 
-      // 2. Separate into icon and non-icon players
-      const iconPlayers = allPlayers.filter(p => p.is_icon);
-      const otherPlayers = allPlayers.filter(p => !p.is_icon);
+      // 2. Separate into icon/owner and non-icon/owner players
+      const iconAndOwnerPlayers = allPlayers.filter(p => p.is_icon || p.is_owner);
+      const otherPlayers = allPlayers.filter(p => !p.is_icon && !p.is_owner);
 
       // 3. Sort each group
-      // First sort icon players: by existing player_number (if any), then by created_at
-      iconPlayers.sort((a, b) => {
+      // First sort icon/owner players: by existing player_number (if any), then by created_at
+      iconAndOwnerPlayers.sort((a, b) => {
         const numA = a.player_number != null ? a.player_number : Infinity;
         const numB = b.player_number != null ? b.player_number : Infinity;
         if (numA !== numB) return numA - numB;
@@ -362,8 +396,8 @@ const AdminPlayersPage = () => {
         return new Date(a.created_at || 0) - new Date(b.created_at || 0);
       });
 
-      // 4. Combine them: icon players first, then others
-      const sortedPlayers = [...iconPlayers, ...otherPlayers];
+      // 4. Combine them: icon/owner players first, then others
+      const sortedPlayers = [...iconAndOwnerPlayers, ...otherPlayers];
 
       // 5. Reset all player_numbers in this auction to null first to avoid unique constraint conflicts
       const { error: resetErr } = await supabase
@@ -377,7 +411,7 @@ const AdminPlayersPage = () => {
       for (let i = 0; i < sortedPlayers.length; i++) {
         const p = sortedPlayers[i];
         const newNumber = i + 1;
-        
+
         const { error: updateErr } = await supabase
           .from('auction_players')
           .update({ player_number: newNumber })
@@ -535,13 +569,19 @@ const AdminPlayersPage = () => {
                   <input type="file" name="photo" accept="image/*" onChange={handleFormChange} className="form-input" ref={fileInputRef1} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Aadhar Card {editingPlayer?.aadhar_card_url && '(Uploaded)'}</label>
-                  <input type="file" name="aadhar" accept="image/*,application/pdf" onChange={handleFormChange} className="form-input" ref={fileInputRef2} />
+                  {/* <label className="form-label">Aadhar Card {editingPlayer?.aadhar_card_url && '(Uploaded)'}</label>
+                  <input type="file" name="aadhar" accept="image/*,application/pdf" onChange={handleFormChange} className="form-input" ref={fileInputRef2} /> */}
                 </div>
                 <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '0.5rem' }}>
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer', margin: 0, padding: '0.5rem', background: 'rgba(255,215,0,0.1)', borderRadius: '4px', border: '1px solid var(--accent-gold)' }}>
                     <input type="checkbox" name="is_icon" checked={formData.is_icon} onChange={handleFormChange} style={{ width: '1.2rem', height: '1.2rem', accentColor: 'var(--accent-gold)' }} />
                     <span style={{ color: 'var(--accent-gold)', fontWeight: 'bold' }}>Mark as Icon Player</span>
+                  </label>
+                </div>
+                <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '0.5rem' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer', margin: 0, padding: '0.5rem', background: 'rgba(57,255,20,0.1)', borderRadius: '4px', border: '1px solid var(--accent-green)' }}>
+                    <input type="checkbox" name="is_owner" checked={formData.is_owner} onChange={handleFormChange} style={{ width: '1.2rem', height: '1.2rem', accentColor: 'var(--accent-green)' }} />
+                    <span style={{ color: 'var(--accent-green)', fontWeight: 'bold' }}>Mark as Owner Player</span>
                   </label>
                 </div>
               </div>
@@ -631,6 +671,7 @@ const AdminPlayersPage = () => {
                           <div style={{ fontWeight: 'bold' }}>{p.first_name} {p.last_name}</div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.email}</div>
                           {p.is_icon && <span style={{ background: 'var(--accent-gold)', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-block', marginTop: '0.3rem' }}>ICON</span>}
+                          {p.is_owner && <span style={{ background: 'var(--accent-green)', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-block', marginTop: '0.3rem', marginLeft: '0.3rem' }}>OWNER</span>}
                         </td>
                         <td style={{ padding: '1rem' }}>{p.player_role}</td>
                         <td style={{ padding: '1rem' }}>{p.mobile}</td>
@@ -648,6 +689,19 @@ const AdminPlayersPage = () => {
                             }}
                           >
                             {p.is_icon ? 'Remove Icon' : 'Make Icon'}
+                          </button>
+
+                          <button
+                            disabled={actionLoading}
+                            onClick={(e) => { e.stopPropagation(); toggleOwnerStatus(p.auction_player_id, p.is_owner); }}
+                            className="btn btn-outline"
+                            style={{
+                              padding: '0.4rem 0.8rem', fontSize: '0.8rem',
+                              color: p.is_owner ? 'var(--accent-green)' : '',
+                              borderColor: p.is_owner ? 'var(--accent-green)' : ''
+                            }}
+                          >
+                            {p.is_owner ? 'Remove Owner' : 'Make Owner'}
                           </button>
 
                           {p.approval_status !== 'approved' && (

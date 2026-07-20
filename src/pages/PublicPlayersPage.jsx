@@ -50,7 +50,7 @@ const PublicPlayersPage = () => {
                     if (auctionData) {
                         const { data: apData, error: apError } = await supabase
                             .from('auction_players')
-                            .select('player_id, player_number, approval_status, is_icon, sold_price, auction_status')
+                            .select('player_id, player_number, approval_status, is_icon, is_owner, sold_price, auction_status')
                             .eq('auction_id', auctionData.id)
                             .neq('approval_status', 'rejected'); 
 
@@ -71,6 +71,7 @@ const PublicPlayersPage = () => {
                                 apMap[ap.player_id] = {
                                     player_number: ap.player_number,
                                     is_icon: ap.is_icon,
+                                    is_owner: ap.is_owner,
                                     sold_price: ap.sold_price,
                                     auction_status: ap.auction_status
                                 };
@@ -80,6 +81,7 @@ const PublicPlayersPage = () => {
                                 ...p,
                                 player_number: apMap[p.id]?.player_number ?? null,
                                 is_icon: apMap[p.id]?.is_icon ?? false,
+                                is_owner: apMap[p.id]?.is_owner ?? false,
                                 sold_price: apMap[p.id]?.sold_price ?? 0,
                                 auction_status: apMap[p.id]?.auction_status ?? null
                             })).sort((a, b) => (a.player_number ?? 9999) - (b.player_number ?? 9999));

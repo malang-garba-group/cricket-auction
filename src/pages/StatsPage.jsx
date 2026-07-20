@@ -451,6 +451,11 @@ const StatsPage = () => {
                                                                 ICON
                                                             </span>
                                                         )}
+                                                        {p.is_owner && (
+                                                            <span style={{ background: 'var(--accent-green)', color: '#000', padding: '1px 5px', borderRadius: '3px', fontSize: '0.65rem', fontWeight: 'bold', display: 'inline-block', marginTop: '0.2rem', marginLeft: '0.3rem' }}>
+                                                                OWNER
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     <td style={{ padding: '1rem', textTransform: 'capitalize' }}>
                                                         {p.players?.player_role || '-'}

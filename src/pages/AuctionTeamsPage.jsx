@@ -13,6 +13,7 @@ const AuctionTeamsPage = () => {
   const [activeAuction, setActiveAuction] = useState(null);
   const [teams, setTeams] = useState([]);
   const [iconPlayers, setIconPlayers] = useState([]);
+  const [ownerPlayers, setOwnerPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -74,22 +75,28 @@ const AuctionTeamsPage = () => {
         }
         setTeams(tData || []);
 
-        // Fetch Icon Players for this auction
+        // Fetch Icon & Owner Players for this auction
         const { data: apData, error: apError } = await supabase
           .from('auction_players')
           .select('*, players(*)')
           .eq('auction_id', auctionData.id)
-          .eq('is_icon', true)
-          .eq('approval_status', 'approved');
+          .eq('approval_status', 'approved')
+          .or('is_icon.eq.true,is_owner.eq.true');
 
         if (apError) throw apError;
         
-        const mappedPlayers = (apData || []).map(ap => ({
+        const mappedIcons = (apData || []).filter(ap => ap.is_icon).map(ap => ({
            auction_player_id: ap.id,
            team_id: ap.team_id,
            ...ap.players
         }));
-        setIconPlayers(mappedPlayers);
+        const mappedOwners = (apData || []).filter(ap => ap.is_owner).map(ap => ({
+           auction_player_id: ap.id,
+           team_id: ap.team_id,
+           ...ap.players
+        }));
+        setIconPlayers(mappedIcons);
+        setOwnerPlayers(mappedOwners);
       }
     } catch (err) {
       console.error(err);
@@ -179,7 +186,7 @@ const AuctionTeamsPage = () => {
   };
 
   const deleteTeam = async (team) => {
-    if (!window.confirm(`Are you sure you want to permanently delete ${team.team_name}? Icon players assigned to this team will be unassigned.`)) return;
+    if (!window.confirm(`Are you sure you want to permanently delete ${team.team_name}? Icon and owner players assigned to this team will be unassigned.`)) return;
     
     try {
       setActionLoading(true);
@@ -195,6 +202,39 @@ const AuctionTeamsPage = () => {
     } catch (err) {
       console.error(err);
       alert('Failed to delete team');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const assignOwnerPlayer = async (auctionPlayerId, teamId) => {
+    try {
+      setActionLoading(true);
+      
+      if (teamId && activeAuction) {
+        const teamOwnersCount = ownerPlayers.filter(p => p.team_id == teamId).length;
+        const maxOwners = activeAuction.number_of_owner !== null && activeAuction.number_of_owner !== undefined
+            ? parseInt(activeAuction.number_of_owner)
+            : 999;
+            
+        if (teamOwnersCount >= maxOwners) {
+            alert(`Cannot assign more than ${maxOwners} owner players to this team.`);
+            setActionLoading(false);
+            return;
+        }
+      }
+
+      const { error } = await supabase
+        .from('auction_players')
+        .update({ team_id: teamId || null })
+        .eq('id', auctionPlayerId);
+        
+      if (error) throw error;
+      
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to assign owner player.');
     } finally {
       setActionLoading(false);
     }
@@ -242,16 +282,26 @@ const AuctionTeamsPage = () => {
   if (!auctionCode || (!loading && !activeAuction)) return <Navigate to="/admin" replace />;
   if (loading) return <Loader message="LOADING TEAMS..." />;
 
-  // Group Icon Players by Team
-  const playersByTeam = {};
-  const unassignedPlayers = [];
-  
+  // Group Icon & Owner Players by Team
+  const iconsByTeam = {};
+  const unassignedIcons = [];
   iconPlayers.forEach(p => {
       if (p.team_id) {
-          if (!playersByTeam[p.team_id]) playersByTeam[p.team_id] = [];
-          playersByTeam[p.team_id].push(p);
+          if (!iconsByTeam[p.team_id]) iconsByTeam[p.team_id] = [];
+          iconsByTeam[p.team_id].push(p);
       } else {
-          unassignedPlayers.push(p);
+          unassignedIcons.push(p);
+      }
+  });
+
+  const ownersByTeam = {};
+  const unassignedOwners = [];
+  ownerPlayers.forEach(p => {
+      if (p.team_id) {
+          if (!ownersByTeam[p.team_id]) ownersByTeam[p.team_id] = [];
+          ownersByTeam[p.team_id].push(p);
+      } else {
+          unassignedOwners.push(p);
       }
   });
 
@@ -268,7 +318,7 @@ const AuctionTeamsPage = () => {
             </h2>
             {activeAuction && (
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem' }}>
-                    Allowed Teams: {activeAuction.number_of_teams !== null && activeAuction.number_of_teams !== undefined ? activeAuction.number_of_teams : 'Unlimited'} | Allowed Icons/Team: {activeAuction.number_of_icon !== null && activeAuction.number_of_icon !== undefined ? activeAuction.number_of_icon : 'Unlimited'}
+                    Allowed Teams: {activeAuction.number_of_teams !== null && activeAuction.number_of_teams !== undefined ? activeAuction.number_of_teams : 'Unlimited'} | Allowed Icons/Team: {activeAuction.number_of_icon !== null && activeAuction.number_of_icon !== undefined ? activeAuction.number_of_icon : 'Unlimited'} | Allowed Owners/Team: {activeAuction.number_of_owner !== null && activeAuction.number_of_owner !== undefined ? activeAuction.number_of_owner : 'Unlimited'}
                 </div>
             )}
           </div>
@@ -318,9 +368,13 @@ const AuctionTeamsPage = () => {
             {teams.length === 0 ? <p className="text-muted text-center" style={{ padding: '2rem' }}>No teams created yet. Start by adding a team!</p> : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '2rem' }}>
                 {teams.map(team => {
-                    const teamIcons = playersByTeam[team.id] || [];
+                    const teamIcons = iconsByTeam[team.id] || [];
                     const maxIcons = activeAuction?.number_of_icon !== null && activeAuction?.number_of_icon !== undefined ? parseInt(activeAuction.number_of_icon) : 999;
                     const canAddMoreIcons = teamIcons.length < maxIcons;
+
+                    const teamOwners = ownersByTeam[team.id] || [];
+                    const maxOwners = activeAuction?.number_of_owner !== null && activeAuction?.number_of_owner !== undefined ? parseInt(activeAuction.number_of_owner) : 999;
+                    const canAddMoreOwners = teamOwners.length < maxOwners;
                     
                     return (
                       <div key={team.id} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '8px', overflow: 'hidden' }}>
@@ -331,13 +385,69 @@ const AuctionTeamsPage = () => {
                             <div style={{ flex: 1 }}>
                                 <h3 style={{ margin: '0 0 0.2rem 0', color: 'var(--text-main)' }}>{team.team_name}</h3>
                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                    Icon Slots: {teamIcons.length} / {maxIcons > 100 ? '∞' : maxIcons}
+                                    Icons: {teamIcons.length}/{maxIcons > 100 ? '∞' : maxIcons} | Owners: {teamOwners.length}/{maxOwners > 100 ? '∞' : maxOwners}
                                 </div>
                             </div>
                             <div>
                                 <button disabled={actionLoading} onClick={() => handleEditClick(team)} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.7rem', marginRight: '0.5rem' }}>Edit</button>
                                 <button disabled={actionLoading} onClick={() => deleteTeam(team)} className="btn" style={{ background: '#ef4444', color: '#fff', padding: '0.3rem 0.6rem', fontSize: '0.7rem' }}>Delete</button>
                             </div>
+                        </div>
+
+                        {/* Owner Players Section */}
+                        <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--glass-border)' }}>
+                            <h4 style={{ margin: '0 0 1rem 0', color: 'var(--accent-green)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Assigned Owner Players</h4>
+                            
+                            {teamOwners.length === 0 ? (
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: '1rem' }}>No owner players assigned yet.</p>
+                            ) : (
+                                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {teamOwners.map(p => (
+                                        <li key={p.auction_player_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(57,255,20,0.05)', padding: '0.5rem 0.8rem', borderRadius: '4px', border: '1px solid rgba(57,255,20,0.2)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                                <img src={p.photo_url || 'https://via.placeholder.com/30'} alt="Player" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: '50%' }} />
+                                                <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{p.first_name} {p.last_name}</span>
+                                            </div>
+                                            <button 
+                                                onClick={() => assignOwnerPlayer(p.auction_player_id, null)} 
+                                                className="btn btn-outline" 
+                                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem', borderColor: '#10b981', color: '#10b981' }}
+                                                disabled={actionLoading}
+                                            >
+                                                Remove
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+
+                            {/* Assign new owner dropdown */}
+                            {canAddMoreOwners && unassignedOwners.length > 0 && (
+                                <div style={{ marginTop: '1rem' }}>
+                                    <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Assign New Owner Player:</label>
+                                    <select 
+                                        className="form-select" 
+                                        style={{ width: '100%', fontSize: '0.9rem' }}
+                                        value=""
+                                        onChange={(e) => assignOwnerPlayer(e.target.value, team.id)}
+                                        disabled={actionLoading}
+                                    >
+                                        <option value="" disabled>-- Select Unassigned Owner Player --</option>
+                                        {unassignedOwners.map(p => (
+                                            <option key={p.auction_player_id} value={p.auction_player_id}>
+                                                {p.first_name} {p.last_name} ({p.player_role})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+                            
+                            {canAddMoreOwners && unassignedOwners.length === 0 && (
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No unassigned owner players available.</p>
+                            )}
+                            {!canAddMoreOwners && (
+                                <p style={{ fontSize: '0.8rem', color: 'var(--accent-green)' }}>Maximum owner players assigned.</p>
+                            )}
                         </div>
 
                         {/* Icon Players Section */}
@@ -368,7 +478,7 @@ const AuctionTeamsPage = () => {
                             )}
 
                             {/* Assign new icon dropdown */}
-                            {canAddMoreIcons && unassignedPlayers.length > 0 && (
+                            {canAddMoreIcons && unassignedIcons.length > 0 && (
                                 <div style={{ marginTop: '1rem' }}>
                                     <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Assign New Icon Player:</label>
                                     <select 
@@ -379,7 +489,7 @@ const AuctionTeamsPage = () => {
                                         disabled={actionLoading}
                                     >
                                         <option value="" disabled>-- Select Unassigned Icon Player --</option>
-                                        {unassignedPlayers.map(p => (
+                                        {unassignedIcons.map(p => (
                                             <option key={p.auction_player_id} value={p.auction_player_id}>
                                                 {p.first_name} {p.last_name} ({p.player_role})
                                             </option>
@@ -388,7 +498,7 @@ const AuctionTeamsPage = () => {
                                 </div>
                             )}
                             
-                            {canAddMoreIcons && unassignedPlayers.length === 0 && (
+                            {canAddMoreIcons && unassignedIcons.length === 0 && (
                                 <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No unassigned icon players available.</p>
                             )}
                             {!canAddMoreIcons && (

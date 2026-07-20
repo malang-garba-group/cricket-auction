@@ -522,7 +522,7 @@ const LiveAuctionPage = () => {
     if (loading) return <Loader message="OPENING AUCTION STADIUM..." />;
 
     const pendingPlayers = players.filter(p => {
-        const matchesStatus = !['sold', 'unsold', 'active'].includes(p.auction_status) && !p.is_icon;
+        const matchesStatus = !['sold', 'unsold', 'active'].includes(p.auction_status) && !p.is_icon && !p.is_owner;
         const lowSearch = searchTerm.toLowerCase();
         const matchesSearch = (p.players.first_name + ' ' + p.players.last_name).toLowerCase().includes(lowSearch) || 
                               (p.player_number && p.player_number.toString().includes(searchTerm));

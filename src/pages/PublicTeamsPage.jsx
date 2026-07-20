@@ -116,8 +116,9 @@ const PublicTeamsPage = () => {
 
     const selectedTeam = teams.find(t => t.id === selectedTeamId);
     const squad = selectedTeamId ? (squads[selectedTeamId] || []) : [];
+    const owners = squad.filter(p => p.is_owner);
     const icons = squad.filter(p => p.is_icon);
-    const auctioned = squad.filter(p => !p.is_icon);
+    const auctioned = squad.filter(p => !p.is_icon && !p.is_owner);
     const spent = squad.reduce((acc, p) => acc + (p.sold_price || 0), 0);
     const maxBudget = activeAuction?.max_budget || 0;
     const remaining = maxBudget - spent;
@@ -367,32 +368,64 @@ const PublicTeamsPage = () => {
                                         gap: '2.5rem' 
                                     }}>
                                         
-                                        {/* Icons */}
-                                        <div>
-                                            <h4 style={{ 
-                                                display: 'flex', 
-                                                justifyContent: 'space-between', 
-                                                alignItems: 'baseline', 
-                                                color: 'var(--accent-gold)', 
-                                                fontSize: '1.1rem', 
-                                                textTransform: 'uppercase', 
-                                                letterSpacing: '2px',
-                                                marginBottom: '1.5rem', 
-                                                borderBottom: '2px solid rgba(255,215,0,0.2)', 
-                                                paddingBottom: '0.6rem' 
-                                            }}>
-                                                ICON PLAYERS <span style={{fontSize: '0.9rem'}}>({icons.length})</span>
-                                            </h4>
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
-                                                {icons.length === 0 ? <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.9rem' }}>No icon players assigned.</p> : icons.map(p => (
-                                                    <Link key={p.id} to={`/player/${p.players.id}`} state={{ from: '/teams' }} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,215,0,0.08)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,215,0,0.15)', textDecoration: 'none' }}>
-                                                        <img src={getOptimizedImageUrl(p.players.photo_url, 150) || 'https://via.placeholder.com/60'} alt="X" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-gold)' }} />
-                                                        <div>
-                                                            <div style={{ fontWeight: '800', fontSize: '1rem', color: '#fff', textTransform: 'uppercase' }}>{p.players.first_name} {p.players.last_name}</div>
-                                                            <div style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: 'bold' }}>{p.players.player_role.toUpperCase()}</div>
-                                                        </div>
-                                                    </Link>
-                                                ))}
+                                        {/* Owners & Icons Column */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+                                            {/* Owners */}
+                                            <div>
+                                                <h4 style={{ 
+                                                    display: 'flex', 
+                                                    justifyContent: 'space-between', 
+                                                    alignItems: 'baseline', 
+                                                    color: 'var(--accent-green)', 
+                                                    fontSize: '1.1rem', 
+                                                    textTransform: 'uppercase', 
+                                                    letterSpacing: '2px',
+                                                    marginBottom: '1.5rem', 
+                                                    borderBottom: '2px solid rgba(57,255,20,0.2)', 
+                                                    paddingBottom: '0.6rem' 
+                                                }}>
+                                                    OWNER PLAYERS <span style={{fontSize: '0.9rem'}}>({owners.length})</span>
+                                                </h4>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
+                                                    {owners.length === 0 ? <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.9rem' }}>No owner players assigned.</p> : owners.map(p => (
+                                                        <Link key={p.id} to={`/player/${p.players.id}`} state={{ from: '/teams' }} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(57,255,20,0.08)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(57,255,20,0.15)', textDecoration: 'none' }}>
+                                                            <img src={getOptimizedImageUrl(p.players.photo_url, 150) || 'https://via.placeholder.com/60'} alt="X" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-green)' }} />
+                                                            <div>
+                                                                <div style={{ fontWeight: '800', fontSize: '1rem', color: '#fff', textTransform: 'uppercase' }}>{p.players.first_name} {p.players.last_name}</div>
+                                                                <div style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontWeight: 'bold' }}>{p.players.player_role.toUpperCase()}</div>
+                                                            </div>
+                                                        </Link>
+                                                    ))}
+                                                </div>
+                                            </div>
+
+                                            {/* Icons */}
+                                            <div>
+                                                <h4 style={{ 
+                                                    display: 'flex', 
+                                                    justifyContent: 'space-between', 
+                                                    alignItems: 'baseline', 
+                                                    color: 'var(--accent-gold)', 
+                                                    fontSize: '1.1rem', 
+                                                    textTransform: 'uppercase', 
+                                                    letterSpacing: '2px',
+                                                    marginBottom: '1.5rem', 
+                                                    borderBottom: '2px solid rgba(255,215,0,0.2)', 
+                                                    paddingBottom: '0.6rem' 
+                                                }}>
+                                                    ICON PLAYERS <span style={{fontSize: '0.9rem'}}>({icons.length})</span>
+                                                </h4>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
+                                                    {icons.length === 0 ? <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.9rem' }}>No icon players assigned.</p> : icons.map(p => (
+                                                        <Link key={p.id} to={`/player/${p.players.id}`} state={{ from: '/teams' }} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,215,0,0.08)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,215,0,0.15)', textDecoration: 'none' }}>
+                                                            <img src={getOptimizedImageUrl(p.players.photo_url, 150) || 'https://via.placeholder.com/60'} alt="X" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-gold)' }} />
+                                                            <div>
+                                                                <div style={{ fontWeight: '800', fontSize: '1rem', color: '#fff', textTransform: 'uppercase' }}>{p.players.first_name} {p.players.last_name}</div>
+                                                                <div style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: 'bold' }}>{p.players.player_role.toUpperCase()}</div>
+                                                            </div>
+                                                        </Link>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
 

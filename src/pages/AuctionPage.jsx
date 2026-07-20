@@ -28,6 +28,7 @@ const AuctionPage = () => {
     per_player_fees: '',
     number_of_teams: '',
     number_of_icon: '',
+    number_of_owner: '',
     base_price: '',
     max_budget: ''
   };
@@ -75,6 +76,7 @@ const AuctionPage = () => {
       per_player_fees: auction.per_player_fees || '',
       number_of_teams: auction.number_of_teams || '',
       number_of_icon: auction.number_of_icon || '',
+      number_of_owner: auction.number_of_owner || '',
       base_price: auction.base_price || '',
       max_budget: auction.max_budget || '',
       logo: null, // Don't reload file objects
@@ -130,6 +132,7 @@ const AuctionPage = () => {
         per_player_fees: formData.per_player_fees ? parseFloat(formData.per_player_fees) : null,
         number_of_teams: formData.number_of_teams ? parseInt(formData.number_of_teams, 10) : null,
         number_of_icon: formData.number_of_icon ? parseInt(formData.number_of_icon, 10) : null,
+        number_of_owner: formData.number_of_owner ? parseInt(formData.number_of_owner, 10) : null,
         base_price: formData.base_price ? parseFloat(formData.base_price) : null,
         max_budget: formData.max_budget ? parseFloat(formData.max_budget) : null,
         auction_logo,
@@ -225,6 +228,10 @@ const AuctionPage = () => {
                 <input type="number" name="number_of_icon" value={formData.number_of_icon} onChange={handleChange} className="form-input" placeholder="e.g. 2" min="0" />
               </div>
               <div className="form-group">
+                <label className="form-label">Owners Per Team</label>
+                <input type="number" name="number_of_owner" value={formData.number_of_owner} onChange={handleChange} className="form-input" placeholder="e.g. 1" min="0" />
+              </div>
+              <div className="form-group">
                 <label className="form-label">Base Price (₹)</label>
                 <input type="number" name="base_price" value={formData.base_price} onChange={handleChange} className="form-input" placeholder="e.g. 1000" min="0" />
               </div>
@@ -298,7 +305,7 @@ const AuctionPage = () => {
                         </td>
                         <td style={{ padding: '1rem' }}>
                           <div>Teams: <span style={{ fontWeight: 'bold' }}>{a.number_of_teams || 0}</span></div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Icons/Team: {a.number_of_icon || 0}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Icons/Team: {a.number_of_icon || 0} | Owners/Team: {a.number_of_owner || 0}</div>
                         </td>
                         <td style={{ padding: '1rem' }}>
                           <div>Budget: <span style={{ fontWeight: 'bold' }}>{a.max_budget ? `₹${a.max_budget}` : '-'}</span></div>

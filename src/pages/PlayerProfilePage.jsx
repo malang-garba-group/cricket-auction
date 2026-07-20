@@ -26,7 +26,7 @@ const PlayerProfilePage = () => {
       try {
         const { data, error } = await supabase
           .from('players')
-          .select('*, auction_players(is_icon)')
+          .select('*, auction_players(is_icon, is_owner)')
           .eq('id', id)
           .single();
 
@@ -124,6 +124,11 @@ const PlayerProfilePage = () => {
               {player.auction_players?.some(ap => ap.is_icon) && (
                 <span style={{ backgroundColor: '#f59e0b', color: '#000', padding: '0.4rem 0.8rem', fontSize: '1rem', fontWeight: 800, borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                   ICON
+                </span>
+              )}
+              {player.auction_players?.some(ap => ap.is_owner) && (
+                <span style={{ backgroundColor: 'var(--accent-green)', color: '#000', padding: '0.4rem 0.8rem', fontSize: '1rem', fontWeight: 800, borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  OWNER
                 </span>
               )}
             </div>
@@ -237,7 +242,7 @@ const PlayerProfilePage = () => {
                         boxShadow: '0 20px 40px rgba(0,0,0,0.4), inset 0 0 20px rgba(255,215,0,0.05)',
                         overflow: 'hidden'
                       }}>
-                        <img
+                        {/* <img
                           src={player.aadhar_card_url}
                           alt="Aadhar Card"
                           style={{
@@ -249,7 +254,7 @@ const PlayerProfilePage = () => {
                           }}
                           onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
                           onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                        />
+                        /> */}
                         {/* Interactive overlay icon */}
                         <div style={{
                           position: 'absolute',

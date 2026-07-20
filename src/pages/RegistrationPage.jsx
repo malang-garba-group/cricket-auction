@@ -38,7 +38,7 @@ const RegistrationPage = () => {
         .maybeSingle();
 
       if (error) throw error;
-      
+
       if (!data) {
         throw new Error("No auction found with code: " + code);
       }
@@ -99,7 +99,7 @@ const RegistrationPage = () => {
         .select('status')
         .eq('id', activeAuction.id)
         .single();
-      
+
       if (latestStatus?.status === 'running') {
         setRegistrationClosed(true);
         throw new Error("Registration just closed as the auction has started!");
@@ -351,10 +351,10 @@ const RegistrationPage = () => {
                 <label className="form-label">Player Photo (Square aspect ratio preferred)</label>
                 <input type="file" name="photo" accept="image/*" className="form-input" onChange={handleChange} />
               </div>
-              <div className="form-group">
+              {/* <div className="form-group">
                 <label className="form-label">Aadhar Card</label>
                 <input type="file" name="aadhar" accept="image/*,application/pdf" className="form-input" onChange={handleChange} />
-              </div>
+              </div> */}
             </div>
 
             {activeAuction && (activeAuction.qr_code_url || activeAuction.per_player_fees) && (
@@ -364,11 +364,14 @@ const RegistrationPage = () => {
                   {activeAuction.per_player_fees && (
                     <>
                       <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--accent-green)', marginBottom: '1.5rem' }}>
-                        Registration Fee: ₹{activeAuction.per_player_fees}
+                        Registration Fee for Male: ₹{activeAuction.per_player_fees}
                       </div>
                       <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--accent-green)', marginBottom: '1.5rem' }}>
-                        Registration Fee for Icon Player : ₹{500}
+                        Registration Fee for Female: ₹500
                       </div>
+                      {/* <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'var(--accent-green)', marginBottom: '1.5rem' }}>
+                        Registration Fee for Icon Player : ₹{500}
+                      </div> */}
                     </>
                   )}
                   {activeAuction.qr_code_url && (

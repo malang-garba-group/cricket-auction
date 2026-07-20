@@ -33,6 +33,11 @@ const PlayerCard = ({ player, viewMode = 'grid' }) => {
                   ICON
                 </span>
               )}
+              {player.is_owner && (
+                <span style={{ display: 'inline-block', backgroundColor: 'var(--accent-green)', color: '#000', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                  OWNER
+                </span>
+              )}
             </div>
           </div>
 
@@ -70,6 +75,13 @@ const PlayerCard = ({ player, viewMode = 'grid' }) => {
       {player.is_icon && (
         <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'var(--accent-gold)', color: '#000', padding: '4px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold', zIndex: 10, letterSpacing: '0.05em' }}>
           ICON
+        </div>
+      )}
+
+      {/* OWNER Badge */}
+      {player.is_owner && (
+        <div style={{ position: 'absolute', top: '10px', left: player.is_icon ? '70px' : '10px', background: 'var(--accent-green)', color: '#000', padding: '4px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold', zIndex: 10, letterSpacing: '0.05em' }}>
+          OWNER
         </div>
       )}
 
