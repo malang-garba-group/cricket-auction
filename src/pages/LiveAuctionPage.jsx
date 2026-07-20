@@ -5,6 +5,20 @@ import { Loader } from '../components/Loader';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { getOptimizedImageUrl } from '../services/cloudinary';
 
+const getTeamInitials = (name) => {
+  if (!name) return '';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+  return words.map(w => w.charAt(0)).join('').toUpperCase();
+};
+
+const getPlayerInitials = (p) => {
+  if (!p) return '';
+  return ((p.first_name?.charAt(0) || '') + (p.last_name?.charAt(0) || '')).toUpperCase();
+};
+
 const LiveAuctionPage = () => {
     const isAuthenticated = localStorage.getItem('cap_admin_auth') === 'true';
     const [searchParams] = useSearchParams();
@@ -589,11 +603,17 @@ const LiveAuctionPage = () => {
 
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3rem', marginBottom: '3rem' }}>
                                         <div style={{ position: 'relative' }}>
-                                            <img
-                                                src={getOptimizedImageUrl(activePlayer.players.photo_url, 500) || 'https://via.placeholder.com/200'}
-                                                alt="Player"
-                                                style={{ width: 'auto', height: 220, objectFit: 'cover', borderRadius: '15px', border: '4px solid var(--accent-gold)', boxShadow: '0 0 30px rgba(255,215,0,0.3)' }}
-                                            />
+                                            {activePlayer.players.photo_url ? (
+                                                <img
+                                                    src={getOptimizedImageUrl(activePlayer.players.photo_url, 500)}
+                                                    alt="Player"
+                                                    style={{ width: 180, height: 220, objectFit: 'cover', borderRadius: '15px', border: '4px solid var(--accent-gold)', boxShadow: '0 0 30px rgba(255,215,0,0.3)' }}
+                                                />
+                                            ) : (
+                                                <div style={{ width: 180, height: 220, borderRadius: '15px', border: '4px solid var(--accent-gold)', background: 'linear-gradient(135deg, rgba(255,215,0,0.2), rgba(0,0,0,0.4))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent-gold)', boxShadow: '0 0 30px rgba(255,215,0,0.3)' }}>
+                                                    {getPlayerInitials(activePlayer.players)}
+                                                </div>
+                                            )}
                                             <div style={{ position: 'absolute', bottom: -15, left: '50%', transform: 'translateX(-50%)', background: 'var(--accent-gold)', color: '#000', padding: '0.3rem 1rem', borderRadius: '4px', fontWeight: 'bold', fontSize: '0.8rem' }}>
                                                 {activePlayer.players.player_role}
                                             </div>
@@ -681,8 +701,12 @@ const LiveAuctionPage = () => {
                                                         background: team.id === activePlayer.current_bid_team_id ? 'rgba(255,215,0,0.1)' : 'transparent'
                                                     }}
                                                 >
-                                                    {team.logo_url && (
+                                                    {team.logo_url ? (
                                                         <img src={team.logo_url} alt="Logo" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+                                                    ) : (
+                                                        <div style={{ width: 40, height: 40, borderRadius: '4px', background: 'var(--accent-gold)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                                                            {getTeamInitials(team.team_name)}
+                                                        </div>
                                                     )}
                                                     <span style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{team.team_name}</span>
                                                 </button>
@@ -759,7 +783,13 @@ const LiveAuctionPage = () => {
                                 ) : (
                                     pendingPlayers.map(p => (
                                         <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.03)', padding: '0.8rem', borderRadius: '8px' }}>
-                                            <img src={getOptimizedImageUrl(p.players.photo_url, 100) || 'https://via.placeholder.com/40'} alt="P" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                                            {p.players.photo_url ? (
+                                                <img src={getOptimizedImageUrl(p.players.photo_url, 100)} alt="P" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                                            ) : (
+                                                <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 'bold', color: '#fff' }}>
+                                                    {getPlayerInitials(p.players)}
+                                                </div>
+                                            )}
                                             <div style={{ flex: 1 }}>
                                                 <div style={{ fontSize: '0.9rem', fontWeight: 'bold' }}>
                                                     {p.player_number && <span style={{ color: 'var(--accent-gold)', marginRight: '0.5rem' }}>#{p.player_number}</span>}
@@ -807,15 +837,25 @@ const LiveAuctionPage = () => {
                                                 <tr key={p.id} style={{ borderBottom: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.02)' }}>
                                                     <td style={{ padding: '1rem', fontWeight: 'bold', color: 'var(--accent-gold)' }}>#{p.player_number || '-'}</td>
                                                     <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                        <img src={getOptimizedImageUrl(p.players.photo_url, 100) || 'https://via.placeholder.com/40'} alt="P" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                                                        {p.players.photo_url ? (
+                                                            <img src={getOptimizedImageUrl(p.players.photo_url, 100)} alt="P" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                                                        ) : (
+                                                            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 'bold', color: '#fff' }}>
+                                                                {getPlayerInitials(p.players)}
+                                                            </div>
+                                                        )}
                                                         <div>{p.players.first_name} {p.players.last_name}</div>
                                                     </td>
                                                     <td style={{ padding: '1rem' }}>{p.players.player_role}</td>
                                                     <td style={{ padding: '1rem' }}>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                            {team?.logo_url && (
+                                                            {team?.logo_url ? (
                                                                 <img src={team.logo_url} alt="L" style={{ width: 25, height: 25, objectFit: 'contain' }} />
-                                                            )}
+                                                            ) : team ? (
+                                                                <div style={{ width: 25, height: 25, borderRadius: '4px', background: 'var(--accent-gold)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                                                                    {getTeamInitials(team.team_name)}
+                                                                </div>
+                                                            ) : null}
                                                             {team?.team_name || 'Unknown Team'}
                                                         </div>
                                                     </td>
@@ -873,7 +913,13 @@ const LiveAuctionPage = () => {
                                             <tr key={p.id} style={{ borderBottom: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.02)' }}>
                                                 <td style={{ padding: '1rem', fontWeight: 'bold', color: 'var(--accent-gold)' }}>#{p.player_number || '-'}</td>
                                                 <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                    <img src={getOptimizedImageUrl(p.players.photo_url, 100) || 'https://via.placeholder.com/40'} alt="P" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                                                    {p.players.photo_url ? (
+                                                        <img src={getOptimizedImageUrl(p.players.photo_url, 100)} alt="P" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                                                    ) : (
+                                                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 'bold', color: '#fff' }}>
+                                                            {getPlayerInitials(p.players)}
+                                                        </div>
+                                                    )}
                                                     <div>{p.players.first_name} {p.players.last_name}</div>
                                                 </td>
                                                 <td style={{ padding: '1rem' }}>{p.players.player_role}</td>

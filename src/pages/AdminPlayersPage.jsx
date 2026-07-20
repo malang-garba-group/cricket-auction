@@ -5,6 +5,11 @@ import PageHeader from '../components/PageHeader';
 import { Loader } from '../components/Loader';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 
+const getPlayerInitials = (p) => {
+  if (!p) return '';
+  return ((p.first_name?.charAt(0) || '') + (p.last_name?.charAt(0) || '')).toUpperCase();
+};
+
 const AdminPlayersPage = () => {
   const isAuthenticated = localStorage.getItem('cap_admin_auth') === 'true';
   const [searchParams] = useSearchParams();
@@ -692,7 +697,13 @@ const AdminPlayersPage = () => {
                           {p.player_number != null ? `#${p.player_number}` : '-'}
                         </td>
                         <td style={{ padding: '1rem' }}>
-                          <img src={getOptimizedImageUrl(p.photo_url, 100) || 'https://via.placeholder.com/50'} alt="Player" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: '4px' }} />
+                          {p.photo_url ? (
+                            <img src={getOptimizedImageUrl(p.photo_url, 100)} alt="Player" style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: '4px' }} />
+                          ) : (
+                            <div style={{ width: 50, height: 50, borderRadius: '4px', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 'bold', color: '#fff' }}>
+                              {getPlayerInitials(p)}
+                            </div>
+                          )}
                         </td>
                         <td style={{ padding: '1rem' }}>
                           <div style={{ fontWeight: 'bold' }}>{p.first_name} {p.last_name}</div>

@@ -7,6 +7,20 @@ import { getOptimizedImageUrl } from '../services/cloudinary';
 import { generateAllTeamsPDF } from '../services/pdfGenerator';
 import { Download } from 'lucide-react';
 
+const getTeamInitials = (name) => {
+  if (!name) return '';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+  return words.map(w => w.charAt(0)).join('').toUpperCase();
+};
+
+const getPlayerInitials = (p) => {
+  if (!p) return '';
+  return ((p.first_name?.charAt(0) || '') + (p.last_name?.charAt(0) || '')).toUpperCase();
+};
+
 const TeamDetailsPage = () => {
     const isAuthenticated = localStorage.getItem('cap_admin_auth') === 'true';
     const [searchParams] = useSearchParams();
@@ -48,32 +62,41 @@ const TeamDetailsPage = () => {
 
     const fetchData = async () => {
         try {
+            setLoading(true);
             if (!auctionCode) {
                 setLoading(false);
                 return;
             }
 
-            const { data: auctionData } = await supabase
+            const { data: auctionData, error: auctionError } = await supabase
                 .from('auctions')
                 .select('*')
                 .eq('auction_code', auctionCode)
                 .maybeSingle();
 
+            if (auctionError) throw auctionError;
             setActiveAuction(auctionData);
 
             if (auctionData) {
-                const { data: tData } = await supabase.from('auction_teams').select('*').eq('auction_id', auctionData.id).order('team_name', { ascending: true });
+                const { data: tData, error: tError } = await supabase
+                    .from('auction_teams')
+                    .select('*')
+                    .eq('auction_id', auctionData.id)
+                    .order('created_at', { ascending: true });
+
+                if (tError) throw tError;
                 setTeams(tData || []);
-                
                 if (tData && tData.length > 0 && !selectedTeamId) {
                     setSelectedTeamId(tData[0].id);
                 }
 
-                const { data: apData } = await supabase
+                const { data: apData, error: apError } = await supabase
                     .from('auction_players')
                     .select('*, players(*)')
                     .eq('auction_id', auctionData.id)
-                    .not('team_id', 'is', null);
+                    .eq('approval_status', 'approved');
+
+                if (apError) throw apError;
 
                 const grouped = {};
                 (tData || []).forEach(team => {
@@ -161,7 +184,13 @@ const TeamDetailsPage = () => {
                                     transition: 'all 0.2s ease'
                                 }}
                             >
-                                <img src={team.logo_url || 'https://via.placeholder.com/30'} alt="L" style={{ width: 30, height: 30, borderRadius: '50%', background: '#fff' }} />
+                                {team.logo_url ? (
+                                    <img src={team.logo_url} alt="L" style={{ width: 30, height: 30, borderRadius: '50%', background: '#fff', objectFit: 'contain' }} />
+                                ) : (
+                                    <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'var(--accent-gold)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                        {getTeamInitials(team.team_name)}
+                                    </div>
+                                )}
                                 <span style={{ fontSize: '0.9rem', fontWeight: selectedTeamId === team.id ? 'bold' : 'normal', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team.team_name}</span>
                             </button>
                         ))}
@@ -174,7 +203,13 @@ const TeamDetailsPage = () => {
                                 {/* Header with Stats */}
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '2.5rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-                                        <img src={selectedTeam.logo_url || 'https://via.placeholder.com/100'} alt="Team" style={{ width: 120, height: 120, objectFit: 'contain', borderRadius: '15px', background: '#fff', padding: '10px', border: '3px solid var(--accent-gold)', boxShadow: '0 0 20px rgba(255,215,0,0.2)' }} />
+                                        {selectedTeam.logo_url ? (
+                                            <img src={selectedTeam.logo_url} alt="Team" style={{ width: 120, height: 120, objectFit: 'contain', borderRadius: '15px', background: '#fff', padding: '10px', border: '3px solid var(--accent-gold)', boxShadow: '0 0 20px rgba(255,215,0,0.2)' }} />
+                                        ) : (
+                                            <div style={{ width: 120, height: 120, borderRadius: '15px', background: 'linear-gradient(135deg, rgba(255,215,0,0.2), rgba(57,255,20,0.1))', border: '3px solid var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 900, color: 'var(--accent-gold)', boxShadow: '0 0 20px rgba(255,215,0,0.2)' }}>
+                                                {getTeamInitials(selectedTeam.team_name)}
+                                            </div>
+                                        )}
                                         <div>
                                             <h2 style={{ fontSize: '2.5rem', color: 'var(--accent-gold)', margin: '0 0 0.5rem 0' }}>{selectedTeam.team_name}</h2>
                                             <div style={{ display: 'flex', gap: '2rem' }}>
@@ -193,19 +228,15 @@ const TeamDetailsPage = () => {
                                     {/* Purse Progress Box */}
                                     <div style={{ width: '300px', background: 'rgba(0,0,0,0.2)', padding: '1.2rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
-                                            <span style={{ color: 'var(--text-muted)' }}>Purse Remaining</span>
-                                            <span style={{ fontWeight: 'bold', color: remaining < 0 ? '#ef4444' : 'var(--accent-green)' }}>₹{remaining.toLocaleString()}</span>
+                                            <span style={{ color: 'var(--text-muted)' }}>Purse Spent: {percentSpent.toFixed(0)}%</span>
+                                            <span style={{ color: '#fff', fontWeight: 'bold' }}>Remaining: {((100 - percentSpent)).toFixed(0)}%</span>
                                         </div>
-                                        <div style={{ height: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '5px', overflow: 'hidden', marginBottom: '0.5rem' }}>
-                                            <div style={{ 
-                                                height: '100%', 
-                                                width: `${Math.min(percentSpent, 100)}%`, 
-                                                background: remaining < 0 ? '#ef4444' : 'var(--accent-gold)',
-                                                transition: 'width 0.5s ease-out'
-                                            }}></div>
+                                        <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                                            <div style={{ width: `${percentSpent}%`, height: '100%', background: percentSpent > 85 ? '#ef4444' : percentSpent > 60 ? '#f59e0b' : 'var(--accent-green)', borderRadius: '10px' }}></div>
                                         </div>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                                            {percentSpent.toFixed(1)}% of ₹{maxBudget.toLocaleString()} used
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.8rem', fontSize: '0.8rem' }}>
+                                            <span style={{ color: 'var(--text-muted)' }}>Spent: ₹{spent.toLocaleString()}</span>
+                                            <span style={{ color: 'var(--accent-green)', fontWeight: 'bold' }}>Rem: ₹{remaining.toLocaleString()}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -223,7 +254,13 @@ const TeamDetailsPage = () => {
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                                 {owners.length === 0 ? <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No owner players assigned.</p> : owners.map(p => (
                                                     <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(57,255,20,0.05)', padding: '1rem', borderRadius: '10px', border: '1px solid rgba(57,255,20,0.1)' }}>
-                                                        <img src={getOptimizedImageUrl(p.players.photo_url, 150) || 'https://via.placeholder.com/50'} alt="Player" style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-green)' }} />
+                                                        {p.players.photo_url ? (
+                                                            <img src={getOptimizedImageUrl(p.players.photo_url, 150)} alt="Player" style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-green)' }} />
+                                                        ) : (
+                                                            <div style={{ width: 50, height: 50, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(57,255,20,0.2), rgba(0,0,0,0.4))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 'bold', color: 'var(--accent-green)', border: '2px solid var(--accent-green)' }}>
+                                                                {getPlayerInitials(p.players)}
+                                                            </div>
+                                                        )}
                                                         <div style={{ flex: 1 }}>
                                                             <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{p.players.first_name} {p.players.last_name}</div>
                                                             <div style={{ fontSize: '0.8rem', color: 'var(--accent-green)' }}>{p.players.player_role.toUpperCase()}</div>
@@ -241,7 +278,13 @@ const TeamDetailsPage = () => {
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                                 {icons.length === 0 ? <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No icon players assigned.</p> : icons.map(p => (
                                                     <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,215,0,0.05)', padding: '1rem', borderRadius: '10px', border: '1px solid rgba(255,215,0,0.1)' }}>
-                                                        <img src={getOptimizedImageUrl(p.players.photo_url, 150) || 'https://via.placeholder.com/50'} alt="Player" style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-gold)' }} />
+                                                        {p.players.photo_url ? (
+                                                            <img src={getOptimizedImageUrl(p.players.photo_url, 150)} alt="Player" style={{ width: 50, height: 50, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-gold)' }} />
+                                                        ) : (
+                                                            <div style={{ width: 50, height: 50, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(255,215,0,0.2), rgba(0,0,0,0.4))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 'bold', color: 'var(--accent-gold)', border: '2px solid var(--accent-gold)' }}>
+                                                                {getPlayerInitials(p.players)}
+                                                            </div>
+                                                        )}
                                                         <div style={{ flex: 1 }}>
                                                             <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{p.players.first_name} {p.players.last_name}</div>
                                                             <div style={{ fontSize: '0.8rem', color: 'var(--accent-gold)' }}>{p.players.player_role.toUpperCase()}</div>
@@ -261,7 +304,13 @@ const TeamDetailsPage = () => {
                                             {auctioned.length === 0 ? <p style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>No auction players bought yet.</p> : auctioned.map(p => (
                                                 <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '0.8rem 1.2rem', borderRadius: '10px' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                        <img src={getOptimizedImageUrl(p.players.photo_url, 150) || 'https://via.placeholder.com/40'} alt="Player" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                                                        {p.players.photo_url ? (
+                                                            <img src={getOptimizedImageUrl(p.players.photo_url, 150)} alt="Player" style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover' }} />
+                                                        ) : (
+                                                            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 'bold', color: '#fff' }}>
+                                                                {getPlayerInitials(p.players)}
+                                                            </div>
+                                                        )}
                                                         <div>
                                                             <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{p.players.first_name} {p.players.last_name}</div>
                                                             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{p.players.player_role}</div>
@@ -278,7 +327,7 @@ const TeamDetailsPage = () => {
                             </div>
                         ) : (
                             <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                                Select a team from the left to view their squad and purse details.
+                                Select a team to view its squad roster and purse budget details.
                             </div>
                         )}
                     </div>

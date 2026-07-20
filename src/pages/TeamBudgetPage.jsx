@@ -5,6 +5,15 @@ import PageHeader from '../components/PageHeader';
 import { Loader } from '../components/Loader';
 import { LayoutGrid, List } from 'lucide-react';
 
+const getTeamInitials = (name) => {
+  if (!name) return '';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+  return words.map(w => w.charAt(0)).join('').toUpperCase();
+};
+
 const TeamBudgetPage = () => {
     const [searchParams] = useSearchParams();
     const auctionCodeParam = searchParams.get('code');
@@ -222,7 +231,13 @@ const TeamBudgetPage = () => {
                                         <div key={team.id} className="glass-panel hover-grow" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', border: '1px solid var(--glass-border)', borderRadius: '12px', background: 'rgba(10,15,29,0.5)' }}>
                                             {/* Team Name + Logo */}
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                                                <img src={team.logo_url || 'https://via.placeholder.com/60'} alt="Logo" style={{ width: 60, height: 60, borderRadius: '8px', background: '#fff', padding: '4px', objectFit: 'contain', border: '1px solid rgba(255,255,255,0.1)' }} />
+                                                {team.logo_url ? (
+                                                    <img src={team.logo_url} alt="Logo" style={{ width: 60, height: 60, borderRadius: '8px', background: '#fff', padding: '4px', objectFit: 'contain', border: '1px solid rgba(255,255,255,0.1)' }} />
+                                                ) : (
+                                                    <div style={{ width: 60, height: 60, borderRadius: '8px', background: 'var(--accent-gold)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', fontWeight: 'bold', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                        {getTeamInitials(team.team_name)}
+                                                    </div>
+                                                )}
                                                 <div style={{ overflow: 'hidden' }}>
                                                     <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--accent-gold)', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                         {team.team_name}
@@ -343,7 +358,13 @@ const TeamBudgetPage = () => {
                                             <div className="list-main-row" style={{ width: '100%', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1.5rem', justifyContent: 'space-between' }}>
                                                 {/* Left: Team Logo & Name */}
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: '220px', flex: '1 1 250px' }}>
-                                                    <img src={team.logo_url || 'https://via.placeholder.com/45'} alt="Logo" style={{ width: 45, height: 45, borderRadius: '6px', background: '#fff', padding: '2px', objectFit: 'contain' }} />
+                                                    {team.logo_url ? (
+                                                        <img src={team.logo_url} alt="Logo" style={{ width: 45, height: 45, borderRadius: '6px', background: '#fff', padding: '2px', objectFit: 'contain' }} />
+                                                    ) : (
+                                                        <div style={{ width: 45, height: 45, borderRadius: '6px', background: 'var(--accent-gold)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', fontWeight: 'bold' }}>
+                                                            {getTeamInitials(team.team_name)}
+                                                        </div>
+                                                    )}
                                                     <div>
                                                         <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--accent-gold)', textTransform: 'uppercase' }}>{team.team_name}</h3>
                                                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Squad Size: {squad.length} / {activeAuction.max_players || 11}</span>

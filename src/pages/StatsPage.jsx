@@ -6,6 +6,15 @@ import PageHeader from '../components/PageHeader';
 import { Loader } from '../components/Loader';
 import EmptyState from '../components/EmptyState';
 
+const getTeamInitials = (name) => {
+  if (!name) return '';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+  return words.map(w => w.charAt(0)).join('').toUpperCase();
+};
+
 const StatsPage = () => {
     const [searchParams] = useSearchParams();
     const auctionCode = searchParams.get('code');
@@ -463,7 +472,13 @@ const StatsPage = () => {
                                                     <td style={{ padding: '1rem' }}>
                                                         {team ? (
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                                {team.logo_url && <img src={team.logo_url} alt="Logo" style={{ width: 25, height: 25, objectFit: 'contain' }} />}
+                                                                {team.logo_url ? (
+                                                                    <img src={team.logo_url} alt="Logo" style={{ width: 25, height: 25, objectFit: 'contain' }} />
+                                                                ) : (
+                                                                    <div style={{ width: 25, height: 25, borderRadius: '4px', background: 'var(--accent-gold)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.65rem', fontWeight: 'bold' }}>
+                                                                        {getTeamInitials(team.team_name)}
+                                                                    </div>
+                                                                )}
                                                                 <span style={{ fontWeight: '600' }}>{team.team_name}</span>
                                                             </div>
                                                         ) : (

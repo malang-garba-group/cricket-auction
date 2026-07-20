@@ -8,6 +8,20 @@ import { getOptimizedImageUrl } from '../services/cloudinary';
 import { generateAllTeamsPDF } from '../services/pdfGenerator';
 import { Download } from 'lucide-react';
 
+const getTeamInitials = (name) => {
+  if (!name) return '';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+  return words.map(w => w.charAt(0)).join('').toUpperCase();
+};
+
+const getPlayerInitials = (p) => {
+  if (!p) return '';
+  return ((p.first_name?.charAt(0) || '') + (p.last_name?.charAt(0) || '')).toUpperCase();
+};
+
 const PublicTeamsPage = () => {
     const [searchParams] = useSearchParams();
     const auctionCode = searchParams.get('code');
@@ -253,7 +267,13 @@ const PublicTeamsPage = () => {
                                         boxShadow: selectedTeamId === team.id ? '0 0 15px rgba(255,215,0,0.1)' : 'none'
                                     }}
                                 >
-                                    <img src={team.logo_url || 'https://via.placeholder.com/35'} alt="Logo" style={{ width: 35, height: 35, borderRadius: '4px', background: '#fff', padding: '2px', objectFit: 'contain' }} />
+                                    {team.logo_url ? (
+                                        <img src={team.logo_url} alt="Logo" style={{ width: 35, height: 35, borderRadius: '4px', background: '#fff', padding: '2px', objectFit: 'contain' }} />
+                                    ) : (
+                                        <div style={{ width: 35, height: 35, borderRadius: '4px', background: 'var(--accent-gold)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                                            {getTeamInitials(team.team_name)}
+                                        </div>
+                                    )}
                                     <span style={{ fontSize: '0.9rem', fontWeight: selectedTeamId === team.id ? 'bold' : '600', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                         {team.team_name}
                                     </span>
@@ -285,20 +305,39 @@ const PublicTeamsPage = () => {
                                         gap: '2rem'
                                     }}>
                                         <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: 'center', gap: '2rem', textAlign: isMobile ? 'center' : 'left', flex: 1 }}>
-                                            <img 
-                                                src={selectedTeam.logo_url || 'https://via.placeholder.com/150'} 
-                                                alt="Team" 
-                                                style={{ 
+                                            {selectedTeam.logo_url ? (
+                                                <img 
+                                                    src={selectedTeam.logo_url} 
+                                                    alt="Team" 
+                                                    style={{ 
+                                                        width: isMobile ? 120 : 150, 
+                                                        height: isMobile ? 120 : 150, 
+                                                        objectFit: 'contain', 
+                                                        borderRadius: '15px', 
+                                                        background: '#fff', 
+                                                        padding: '10px', 
+                                                        border: '3px solid var(--accent-gold)', 
+                                                        boxShadow: '0 0 20px rgba(255,215,0,0.2)' 
+                                                    }} 
+                                                />
+                                            ) : (
+                                                <div style={{ 
                                                     width: isMobile ? 120 : 150, 
                                                     height: isMobile ? 120 : 150, 
-                                                    objectFit: 'contain', 
                                                     borderRadius: '15px', 
-                                                    background: '#fff', 
-                                                    padding: '10px', 
+                                                    background: 'linear-gradient(135deg, rgba(255,215,0,0.2), rgba(57,255,20,0.1))', 
                                                     border: '3px solid var(--accent-gold)', 
-                                                    boxShadow: '0 0 20px rgba(255,215,0,0.15)' 
-                                                }} 
-                                            />
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    justifyContent: 'center', 
+                                                    fontSize: isMobile ? '2.5rem' : '3.5rem', 
+                                                    fontWeight: 900, 
+                                                    color: 'var(--accent-gold)', 
+                                                    boxShadow: '0 0 20px rgba(255,215,0,0.2)' 
+                                                }}>
+                                                    {getTeamInitials(selectedTeam.team_name)}
+                                                </div>
+                                            )}
                                             <div style={{ overflow: 'hidden' }}>
                                                 <h2 style={{ 
                                                     fontSize: isMobile ? '2.2rem' : '3.2rem', 
@@ -389,7 +428,13 @@ const PublicTeamsPage = () => {
                                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
                                                     {owners.length === 0 ? <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.9rem' }}>No owner players assigned.</p> : owners.map(p => (
                                                         <Link key={p.id} to={`/player/${p.players.id}`} state={{ from: '/teams' }} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(57,255,20,0.08)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(57,255,20,0.15)', textDecoration: 'none' }}>
-                                                            <img src={getOptimizedImageUrl(p.players.photo_url, 150) || 'https://via.placeholder.com/60'} alt="X" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-green)' }} />
+                                                            {p.players.photo_url ? (
+                                                                <img src={getOptimizedImageUrl(p.players.photo_url, 150)} alt="X" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-green)' }} />
+                                                            ) : (
+                                                                <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(57,255,20,0.2), rgba(0,0,0,0.4))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--accent-green)', border: '2px solid var(--accent-green)' }}>
+                                                                    {getPlayerInitials(p.players)}
+                                                                </div>
+                                                            )}
                                                             <div>
                                                                 <div style={{ fontWeight: '800', fontSize: '1rem', color: '#fff', textTransform: 'uppercase' }}>{p.players.first_name} {p.players.last_name}</div>
                                                                 <div style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontWeight: 'bold' }}>{p.players.player_role.toUpperCase()}</div>
@@ -418,7 +463,13 @@ const PublicTeamsPage = () => {
                                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
                                                     {icons.length === 0 ? <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.9rem' }}>No icon players assigned.</p> : icons.map(p => (
                                                         <Link key={p.id} to={`/player/${p.players.id}`} state={{ from: '/teams' }} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,215,0,0.08)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,215,0,0.15)', textDecoration: 'none' }}>
-                                                            <img src={getOptimizedImageUrl(p.players.photo_url, 150) || 'https://via.placeholder.com/60'} alt="X" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-gold)' }} />
+                                                            {p.players.photo_url ? (
+                                                                <img src={getOptimizedImageUrl(p.players.photo_url, 150)} alt="X" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-gold)' }} />
+                                                            ) : (
+                                                                <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(255,215,0,0.2), rgba(0,0,0,0.4))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--accent-gold)', border: '2px solid var(--accent-gold)' }}>
+                                                                    {getPlayerInitials(p.players)}
+                                                                </div>
+                                                            )}
                                                             <div>
                                                                 <div style={{ fontWeight: '800', fontSize: '1rem', color: '#fff', textTransform: 'uppercase' }}>{p.players.first_name} {p.players.last_name}</div>
                                                                 <div style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: 'bold' }}>{p.players.player_role.toUpperCase()}</div>
@@ -465,7 +516,13 @@ const PublicTeamsPage = () => {
                                                         onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
                                                     >
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                            <img src={getOptimizedImageUrl(p.players.photo_url, 150) || 'https://via.placeholder.com/45'} alt="P" style={{ width: 45, height: 45, borderRadius: '50%', objectFit: 'cover' }} />
+                                                            {p.players.photo_url ? (
+                                                                <img src={getOptimizedImageUrl(p.players.photo_url, 150)} alt="P" style={{ width: 45, height: 45, borderRadius: '50%', objectFit: 'cover' }} />
+                                                            ) : (
+                                                                <div style={{ width: 45, height: 45, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 'bold', color: '#fff' }}>
+                                                                    {getPlayerInitials(p.players)}
+                                                                </div>
+                                                            )}
                                                             <div>
                                                                 <div style={{ fontWeight: '700', fontSize: '0.9rem', color: '#fff' }}>{p.players.first_name} {p.players.last_name}</div>
                                                                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{p.players.player_role}</div>

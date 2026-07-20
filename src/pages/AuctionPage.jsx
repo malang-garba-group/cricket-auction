@@ -5,6 +5,15 @@ import PageHeader from '../components/PageHeader';
 import { Link } from 'react-router-dom';
 import { Loader } from '../components/Loader';
 
+const getAuctionInitials = (name) => {
+  if (!name) return '';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+  return words.map(w => w.charAt(0)).join('').toUpperCase();
+};
+
 const AuctionPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -293,7 +302,13 @@ const AuctionPage = () => {
                     {auctionsList.map(a => (
                       <tr key={a.id} style={{ borderBottom: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.2)' }}>
                         <td style={{ padding: '1rem' }}>
-                          <img src={a.auction_logo || 'https://via.placeholder.com/50'} alt="Logo" style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: '4px', background: 'rgba(255,255,255,0.1)' }} />
+                          {a.auction_logo ? (
+                            <img src={a.auction_logo} alt="Logo" style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: '4px', background: 'rgba(255,255,255,0.1)' }} />
+                          ) : (
+                            <div style={{ width: 40, height: 40, borderRadius: '4px', background: 'var(--accent-gold)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                              {getAuctionInitials(a.auction_name)}
+                            </div>
+                          )}
                         </td>
                         <td style={{ padding: '1rem' }}>
                           <div style={{ fontWeight: 'bold' }}>{a.auction_name}</div>

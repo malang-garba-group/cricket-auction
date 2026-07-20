@@ -5,6 +5,20 @@ import PageHeader from '../components/PageHeader';
 import { Loader } from '../components/Loader';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 
+const getTeamInitials = (name) => {
+  if (!name) return '';
+  const words = name.trim().split(/\s+/);
+  if (words.length === 1) {
+    return words[0].slice(0, 2).toUpperCase();
+  }
+  return words.map(w => w.charAt(0)).join('').toUpperCase();
+};
+
+const getPlayerInitials = (p) => {
+  if (!p) return '';
+  return ((p.first_name?.charAt(0) || '') + (p.last_name?.charAt(0) || '')).toUpperCase();
+};
+
 const AuctionTeamsPage = () => {
   const isAuthenticated = localStorage.getItem('cap_admin_auth') === 'true';
   const [searchParams] = useSearchParams();
@@ -381,7 +395,13 @@ const AuctionTeamsPage = () => {
                         
                         {/* Team Header */}
                         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)' }}>
-                            <img src={team.logo_url || 'https://via.placeholder.com/60'} alt="Logo" style={{ width: 60, height: 60, objectFit: 'contain', borderRadius: '50%', background: '#fff', border: '2px solid var(--accent-gold)' }} />
+                            {team.logo_url ? (
+                                <img src={team.logo_url} alt="Logo" style={{ width: 60, height: 60, objectFit: 'contain', borderRadius: '50%', background: '#fff', border: '2px solid var(--accent-gold)' }} />
+                            ) : (
+                                <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--accent-gold)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', fontWeight: 'bold', border: '2px solid var(--accent-gold)' }}>
+                                    {getTeamInitials(team.team_name)}
+                                </div>
+                            )}
                             <div style={{ flex: 1 }}>
                                 <h3 style={{ margin: '0 0 0.2rem 0', color: 'var(--text-main)' }}>{team.team_name}</h3>
                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
@@ -405,7 +425,13 @@ const AuctionTeamsPage = () => {
                                     {teamOwners.map(p => (
                                         <li key={p.auction_player_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(57,255,20,0.05)', padding: '0.5rem 0.8rem', borderRadius: '4px', border: '1px solid rgba(57,255,20,0.2)' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                                <img src={p.photo_url || 'https://via.placeholder.com/30'} alt="Player" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: '50%' }} />
+                                                {p.photo_url ? (
+                                                    <img src={p.photo_url} alt="Player" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: '50%' }} />
+                                                ) : (
+                                                    <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold', color: '#fff' }}>
+                                                        {getPlayerInitials(p)}
+                                                    </div>
+                                                )}
                                                 <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{p.first_name} {p.last_name}</span>
                                             </div>
                                             <button 
@@ -461,7 +487,13 @@ const AuctionTeamsPage = () => {
                                     {teamIcons.map(p => (
                                         <li key={p.auction_player_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,215,0,0.05)', padding: '0.5rem 0.8rem', borderRadius: '4px', border: '1px solid rgba(255,215,0,0.2)' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                                <img src={p.photo_url || 'https://via.placeholder.com/30'} alt="Player" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: '50%' }} />
+                                                {p.photo_url ? (
+                                                    <img src={p.photo_url} alt="Player" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: '50%' }} />
+                                                ) : (
+                                                    <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold', color: '#fff' }}>
+                                                        {getPlayerInitials(p)}
+                                                    </div>
+                                                )}
                                                 <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{p.first_name} {p.last_name}</span>
                                             </div>
                                             <button 
