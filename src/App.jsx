@@ -26,6 +26,8 @@ const LiveAuctionProjectorPage = React.lazy(() => import('./pages/LiveAuctionPro
 const PublicPlayersPage = React.lazy(() => import('./pages/PublicPlayersPage'));
 const PublicTeamsPage = React.lazy(() => import('./pages/PublicTeamsPage'));
 const StatsPage = React.lazy(() => import('./pages/StatsPage'));
+const TeamBudgetPage = React.lazy(() => import('./pages/TeamBudgetPage'));
+const AdminInvitationsPage = React.lazy(() => import('./pages/AdminInvitationsPage'));
 
 function App() {
   return (
@@ -37,6 +39,7 @@ function App() {
           <Route path="/live-auction-projector" element={<LiveAuctionProjectorPage />} />
           <Route path="/all-players" element={<PublicPlayersPage />} />
           <Route path="/teams" element={<PublicTeamsPage />} />
+          <Route path="/team-budget" element={<TeamBudgetPage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/states" element={<StatsPage />} />
 
@@ -48,6 +51,7 @@ function App() {
           <Route path="/live-auction" element={<ProtectedRoute><LiveAuctionPage /></ProtectedRoute>} />
           <Route path="/team-details" element={<ProtectedRoute><TeamDetailsPage /></ProtectedRoute>} />
           <Route path="/admin-players" element={<ProtectedRoute><AdminPlayersPage /></ProtectedRoute>} />
+          <Route path="/admin-invitations" element={<ProtectedRoute><AdminInvitationsPage /></ProtectedRoute>} />
         </Routes>
       </Suspense>
     </div>

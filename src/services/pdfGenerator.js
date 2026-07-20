@@ -74,7 +74,7 @@ export const generateAllTeamsPDF = async (activeAuction, teams, squads) => {
     doc.setFont(undefined, 'normal');
     doc.setTextColor(71, 85, 105);
     
-    const statsText = `Purse Spent: INR ${spent.toLocaleString()}  |  Purse Remaining: INR ${remaining.toLocaleString()}  |  Players: ${squad.length}/${activeAuction?.max_players || 15}`;
+    const statsText = `Purse Spent: INR ${spent.toLocaleString()}  |  Purse Remaining: INR ${remaining.toLocaleString()}  |  Players: ${squad.length}/${activeAuction?.max_players || 11}`;
     doc.text(statsText, textX, 29);
 
     // Separator line

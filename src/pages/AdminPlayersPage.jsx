@@ -134,7 +134,9 @@ const AdminPlayersPage = () => {
       const newOwnerStatus = !currentStatus;
 
       const updatePayload = { is_owner: newOwnerStatus };
-      if (!newOwnerStatus) {
+      if (newOwnerStatus) {
+        updatePayload.is_icon = false;
+      } else {
         updatePayload.team_id = null;
       }
 
@@ -144,7 +146,11 @@ const AdminPlayersPage = () => {
         .eq('id', auctionPlayerId);
 
       if (error) throw error;
-      setPlayersList(prev => prev.map(p => p.auction_player_id === auctionPlayerId ? { ...p, is_owner: newOwnerStatus } : p));
+      setPlayersList(prev => prev.map(p => p.auction_player_id === auctionPlayerId ? { 
+        ...p, 
+        is_owner: newOwnerStatus, 
+        is_icon: newOwnerStatus ? false : p.is_icon 
+      } : p));
 
       if (!newOwnerStatus) await fetchData();
     } catch (err) {
@@ -161,7 +167,9 @@ const AdminPlayersPage = () => {
       const newIconStatus = !currentStatus;
 
       const updatePayload = { is_icon: newIconStatus };
-      if (!newIconStatus) {
+      if (newIconStatus) {
+        updatePayload.is_owner = false;
+      } else {
         updatePayload.team_id = null;
       }
 
@@ -171,7 +179,11 @@ const AdminPlayersPage = () => {
         .eq('id', auctionPlayerId);
 
       if (error) throw error;
-      setPlayersList(prev => prev.map(p => p.auction_player_id === auctionPlayerId ? { ...p, is_icon: newIconStatus } : p));
+      setPlayersList(prev => prev.map(p => p.auction_player_id === auctionPlayerId ? { 
+        ...p, 
+        is_icon: newIconStatus, 
+        is_owner: newIconStatus ? false : p.is_owner 
+      } : p));
 
       // If we removed icon status, we might need to refresh to reflect team changes in UI
       if (!newIconStatus) await fetchData();
@@ -248,7 +260,13 @@ const AdminPlayersPage = () => {
     if (files) {
       setFormData(prev => ({ ...prev, [name]: files[0] }));
     } else if (type === 'checkbox') {
-      setFormData(prev => ({ ...prev, [name]: checked }));
+      if (name === 'is_icon' && checked) {
+        setFormData(prev => ({ ...prev, is_icon: true, is_owner: false }));
+      } else if (name === 'is_owner' && checked) {
+        setFormData(prev => ({ ...prev, is_owner: true, is_icon: false }));
+      } else {
+        setFormData(prev => ({ ...prev, [name]: checked }));
+      }
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -359,7 +377,7 @@ const AdminPlayersPage = () => {
 
   const backfillPlayerNumbers = async () => {
     if (!activeAuction) return alert('No active auction found.');
-    if (!window.confirm('This will reassign player numbers to all players. Icon players will be numbered first (starting from 1), followed by all other players. Continue?')) return;
+    if (!window.confirm('This will reassign player numbers to all players. Owner players will be numbered first (starting from 1), followed by Icon players, and then all other players. Continue?')) return;
 
     setActionLoading(true);
     try {
@@ -375,13 +393,22 @@ const AdminPlayersPage = () => {
         return;
       }
 
-      // 2. Separate into icon/owner and non-icon/owner players
-      const iconAndOwnerPlayers = allPlayers.filter(p => p.is_icon || p.is_owner);
-      const otherPlayers = allPlayers.filter(p => !p.is_icon && !p.is_owner);
+      // 2. Separate into owner, icon, and other players
+      const ownerPlayers = allPlayers.filter(p => p.is_owner);
+      const iconPlayers = allPlayers.filter(p => p.is_icon);
+      const otherPlayers = allPlayers.filter(p => !p.is_owner && !p.is_icon);
 
       // 3. Sort each group
-      // First sort icon/owner players: by existing player_number (if any), then by created_at
-      iconAndOwnerPlayers.sort((a, b) => {
+      // Sort owner players: by existing player_number (if any), then by created_at
+      ownerPlayers.sort((a, b) => {
+        const numA = a.player_number != null ? a.player_number : Infinity;
+        const numB = b.player_number != null ? b.player_number : Infinity;
+        if (numA !== numB) return numA - numB;
+        return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+      });
+
+      // Sort icon players: by existing player_number (if any), then by created_at
+      iconPlayers.sort((a, b) => {
         const numA = a.player_number != null ? a.player_number : Infinity;
         const numB = b.player_number != null ? b.player_number : Infinity;
         if (numA !== numB) return numA - numB;
@@ -396,8 +423,8 @@ const AdminPlayersPage = () => {
         return new Date(a.created_at || 0) - new Date(b.created_at || 0);
       });
 
-      // 4. Combine them: icon/owner players first, then others
-      const sortedPlayers = [...iconAndOwnerPlayers, ...otherPlayers];
+      // 4. Combine them: owners first, then icons, then others
+      const sortedPlayers = [...ownerPlayers, ...iconPlayers, ...otherPlayers];
 
       // 5. Reset all player_numbers in this auction to null first to avoid unique constraint conflicts
       const { error: resetErr } = await supabase

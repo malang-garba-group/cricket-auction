@@ -238,6 +238,463 @@ const LiveAuctionProjectorPage = () => {
         setUnsoldImageError(false);
     }, [lastUnsoldPlayer?.id]);
 
+    // SOLD Canvas 3D Animation Hook (Holographic Golden Trophy & 3D Confetti)
+    useEffect(() => {
+        if (!showSoldOverlay) return;
+        const canvas = document.getElementById('sold-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let animationFrameId;
+
+        const resizeCanvas = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const project = (x, y, z) => {
+            const fov = 400;
+            const scale = fov / (fov + z + 300);
+            const px = x * scale + canvas.width / 2;
+            const py = y * scale + canvas.height * 0.45;
+            return { x: px, y: py, scale: scale };
+        };
+
+        const rotateY = (x, z, rad) => {
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            return [x * cos + z * sin, -x * sin + z * cos];
+        };
+
+        const rotateX = (y, z, rad) => {
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            return [y * cos - z * sin, y * sin + z * cos];
+        };
+
+        const trophyPoints = [];
+        const baseRadius = 60;
+        for (let r = 0; r < 5; r++) {
+            const y = 80 - r * 15;
+            const rad = baseRadius - r * 10;
+            for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
+                trophyPoints.push({ x: Math.cos(a) * rad, y, z: Math.sin(a) * rad });
+            }
+        }
+        for (let r = 0; r < 6; r++) {
+            const y = -10 - r * 15;
+            const rad = 25 + r * 10;
+            for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
+                trophyPoints.push({ x: Math.cos(a) * rad, y, z: Math.sin(a) * rad });
+            }
+        }
+
+        class Confetti3D {
+            constructor() {
+                this.reset();
+                this.y = Math.random() * -canvas.height - 50;
+            }
+            reset() {
+                this.x = Math.random() * canvas.width - canvas.width / 2;
+                this.y = -canvas.height / 2 - 20;
+                this.z = Math.random() * 600 - 300;
+                this.vx = Math.random() * 2 - 1;
+                this.vy = Math.random() * 3 + 2;
+                this.vz = Math.random() * 2 - 1;
+                this.color = `hsl(${Math.random() * 360}, 100%, 65%)`;
+                this.size = Math.random() * 12 + 6;
+                this.rx = Math.random() * Math.PI;
+                this.ry = Math.random() * Math.PI;
+                this.rz = Math.random() * Math.PI;
+                this.vrx = Math.random() * 0.05 - 0.025;
+                this.vry = Math.random() * 0.05 - 0.025;
+                this.vrz = Math.random() * 0.05 - 0.025;
+            }
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.z += this.vz;
+                this.rx += this.vrx;
+                this.ry += this.vry;
+                this.rz += this.vrz;
+
+                if (this.y > canvas.height / 2 + 50) {
+                    this.reset();
+                }
+            }
+            draw() {
+                const p = project(this.x, this.y, this.z);
+                if (p.scale <= 0) return;
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(this.rz);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = Math.min(1, p.scale);
+                const s = this.size * p.scale;
+                ctx.fillRect(-s / 2, -s / 2, s, s);
+                ctx.restore();
+            }
+        }
+
+        const confettis = Array.from({ length: 85 }, () => new Confetti3D());
+        let trophyAngle = 0;
+
+        const loop = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            confettis.forEach(c => {
+                c.update();
+                c.draw();
+            });
+
+            trophyAngle += 0.015;
+            ctx.save();
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 1.5;
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ffd700';
+
+            const rings = {};
+            trophyPoints.forEach(pt => {
+                let [x1, z1] = rotateY(pt.x, pt.z, trophyAngle);
+                let [y1, z2] = rotateX(pt.y, z1, 0.1);
+                const p = project(x1, y1, z2);
+
+                if (!rings[pt.y]) rings[pt.y] = [];
+                rings[pt.y].push(p);
+            });
+
+            Object.keys(rings).forEach(y => {
+                const pts = rings[y];
+                ctx.beginPath();
+                ctx.moveTo(pts[0].x, pts[0].y);
+                for (let i = 1; i < pts.length; i++) {
+                    ctx.lineTo(pts[i].x, pts[i].y);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            });
+
+            ctx.restore();
+            animationFrameId = requestAnimationFrame(loop);
+        };
+        loop();
+
+        return () => {
+            window.removeEventListener('resize', resizeCanvas);
+            cancelAnimationFrame(animationFrameId);
+        };
+    }, [showSoldOverlay]);
+
+    // UNSOLD Canvas 3D Animation Hook (3D Wicket Shattering & 3D Ball Collision)
+    useEffect(() => {
+        if (!showUnsoldOverlay) return;
+        const canvas = document.getElementById('unsold-canvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        let animationFrameId;
+
+        const resizeCanvas = () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        };
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const project = (x, y, z) => {
+            const fov = 350;
+            const scale = fov / (fov + z + 400);
+            const px = x * scale + (window.innerWidth < 768 ? canvas.width * 0.5 : canvas.width * 0.25);
+            const py = y * scale + canvas.height * 0.65;
+            return { x: px, y: py, scale: scale };
+        };
+
+        const rotateY = (x, z, rad) => {
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            return [x * cos + z * sin, -x * sin + z * cos];
+        };
+
+        const rotateX = (y, z, rad) => {
+            const cos = Math.cos(rad);
+            const sin = Math.sin(rad);
+            return [y * cos - z * sin, y * sin + z * cos];
+        };
+
+        const groundY = 120;
+
+        const ball3D = {
+            x: -200,
+            y: -50,
+            z: -400,
+            vx: 6,
+            vy: 3,
+            vz: 12,
+            radius: 12,
+            hit: false
+        };
+
+        class Stump3D {
+            constructor(x) {
+                this.x = x;
+                this.y = groundY - 50;
+                this.z = 0;
+                this.w = 8;
+                this.h = 100;
+                this.vx = 0;
+                this.vy = 0;
+                this.vz = 0;
+                this.rx = 0;
+                this.ry = 0;
+                this.rz = 0;
+                this.vrx = 0;
+                this.vry = 0;
+                this.vrz = 0;
+            }
+            update() {
+                if (ball3D.hit) {
+                    this.vy += 0.35;
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.z += this.vz;
+                    this.rx += this.vrx;
+                    this.ry += this.vry;
+                    this.rz += this.vrz;
+
+                    if (this.y + this.h / 2 > groundY) {
+                        this.y = groundY - this.h / 2;
+                        this.vy = -this.vy * 0.3;
+                        this.vx *= 0.8;
+                        this.vz *= 0.8;
+                        this.vrx *= 0.8;
+                        this.vry *= 0.8;
+                        this.vrz *= 0.8;
+                    }
+                }
+            }
+            draw() {
+                const halfH = this.h / 2;
+                const points = [
+                    { x: -this.w / 2, y: -halfH, z: 0 },
+                    { x: this.w / 2, y: -halfH, z: 0 },
+                    { x: this.w / 2, y: halfH, z: 0 },
+                    { x: -this.w / 2, y: halfH, z: 0 }
+                ];
+
+                const projPoints = points.map(pt => {
+                    let [y1, z1] = rotateX(pt.y, pt.z, this.rx);
+                    let [x1, z2] = rotateY(pt.x, z1, this.ry);
+                    return project(x1 + this.x, y1 + this.y, z2 + this.z);
+                });
+
+                ctx.save();
+                ctx.fillStyle = '#8b5a2b';
+                ctx.strokeStyle = '#5c3a21';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(projPoints[0].x, projPoints[0].y);
+                for (let i = 1; i < projPoints.length; i++) {
+                    ctx.lineTo(projPoints[i].x, projPoints[i].y);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+
+        class Bail3D {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.z = 0;
+                this.w = 24;
+                this.h = 5;
+                this.vx = 0;
+                this.vy = 0;
+                this.vz = 0;
+                this.rx = 0;
+                this.ry = 0;
+                this.rz = 0;
+                this.vrx = 0;
+                this.vry = 0;
+                this.vrz = 0;
+            }
+            update() {
+                if (ball3D.hit) {
+                    this.vy += 0.35;
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.z += this.vz;
+                    this.rx += this.vrx;
+                    this.ry += this.vry;
+                    this.rz += this.vrz;
+
+                    if (this.y + this.h / 2 > groundY) {
+                        this.y = groundY - this.h / 2;
+                        this.vy = -this.vy * 0.25;
+                        this.vx *= 0.8;
+                        this.vz *= 0.8;
+                    }
+                }
+            }
+            draw() {
+                const halfW = this.w / 2;
+                const halfH = this.h / 2;
+                const points = [
+                    { x: -halfW, y: -halfH, z: 0 },
+                    { x: halfW, y: -halfH, z: 0 },
+                    { x: halfW, y: halfH, z: 0 },
+                    { x: -halfW, y: halfH, z: 0 }
+                ];
+                const projPoints = points.map(pt => {
+                    let [y1, z1] = rotateX(pt.y, pt.z, this.rx);
+                    let [x1, z2] = rotateY(pt.x, z1, this.ry);
+                    return project(x1 + this.x, y1 + this.y, z2 + this.z);
+                });
+
+                ctx.save();
+                ctx.fillStyle = '#cd853f';
+                ctx.beginPath();
+                ctx.moveTo(projPoints[0].x, projPoints[0].y);
+                for (let i = 1; i < projPoints.length; i++) {
+                    ctx.lineTo(projPoints[i].x, projPoints[i].y);
+                }
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        const stumps = [
+            new Stump3D(-22),
+            new Stump3D(0),
+            new Stump3D(22)
+        ];
+        const bails = [
+            new Bail3D(-11, groundY - 103),
+            new Bail3D(11, groundY - 103)
+        ];
+
+        class Tear {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * -canvas.height;
+                this.length = Math.random() * 12 + 4;
+                this.speed = Math.random() * 3 + 3;
+            }
+            update() {
+                this.y += this.speed;
+                if (this.y > canvas.height) {
+                    this.y = -20;
+                    this.x = Math.random() * canvas.width;
+                }
+            }
+            draw() {
+                ctx.strokeStyle = 'rgba(59, 130, 246, 0.25)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x, this.y + this.length);
+                ctx.stroke();
+            }
+        }
+        const tears = Array.from({ length: 30 }, () => new Tear());
+
+        const loop = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            tears.forEach(t => {
+                t.update();
+                t.draw();
+            });
+
+            if (!ball3D.hit) {
+                ball3D.x += ball3D.vx;
+                ball3D.y += ball3D.vy;
+                ball3D.z += ball3D.vz;
+
+                if (ball3D.z >= 0) {
+                    ball3D.hit = true;
+                    ball3D.vx = -4;
+                    ball3D.vy = 4;
+                    ball3D.vz = -2;
+
+                    stumps[0].vx = -6;
+                    stumps[0].vy = -6;
+                    stumps[0].vz = -5;
+                    stumps[0].vrx = 0.15;
+                    stumps[0].vry = -0.1;
+                    stumps[0].vrz = -0.05;
+
+                    stumps[1].vx = 1;
+                    stumps[1].vy = -8;
+                    stumps[1].vz = -8;
+                    stumps[1].vrx = -0.18;
+                    stumps[1].vrz = 0.12;
+
+                    stumps[2].vx = 7;
+                    stumps[2].vy = -5;
+                    stumps[2].vz = -4;
+                    stumps[2].vrx = 0.12;
+                    stumps[2].vry = 0.14;
+
+                    bails[0].vx = -5;
+                    bails[0].vy = -12;
+                    bails[0].vz = -10;
+                    bails[0].vrx = 0.25;
+
+                    bails[1].vx = 6;
+                    bails[1].vy = -14;
+                    bails[1].vz = -12;
+                    bails[1].vrx = -0.3;
+                }
+            } else {
+                ball3D.x += ball3D.vx;
+                ball3D.y += ball3D.vy;
+                ball3D.z += ball3D.vz;
+                ball3D.vy += 0.35;
+
+                if (ball3D.y > groundY) {
+                    ball3D.y = groundY;
+                    ball3D.vy = -ball3D.vy * 0.25;
+                }
+            }
+
+            const ballProj = project(ball3D.x, ball3D.y, ball3D.z);
+            if (ballProj.scale > 0) {
+                ctx.save();
+                ctx.fillStyle = '#ef4444';
+                ctx.shadowBlur = 10 * ballProj.scale;
+                ctx.shadowColor = 'rgba(239, 68, 68, 0.5)';
+                ctx.beginPath();
+                ctx.arc(ballProj.x, ballProj.y, ball3D.radius * ballProj.scale, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+
+            stumps.forEach(s => {
+                s.update();
+                s.draw();
+            });
+
+            bails.forEach(b => {
+                b.update();
+                b.draw();
+            });
+
+            animationFrameId = requestAnimationFrame(loop);
+        };
+        loop();
+
+        return () => {
+            window.removeEventListener('resize', resizeCanvas);
+            cancelAnimationFrame(animationFrameId);
+        };
+    }, [showUnsoldOverlay]);
+
     // Keyboard controls for testing SOLD / UNSOLD overlay animations manually
     // useEffect(() => {
     //     const handleKeyDown = (e) => {
@@ -660,7 +1117,7 @@ const LiveAuctionProjectorPage = () => {
                                 )}
                             </div>
 
-                            {activePlayer?.current_bid_price >= 20000 && (
+                            {/* {activePlayer?.current_bid_price >= 20000 && (
                                 <div style={{
                                     marginTop: 'clamp(12px, 2vh, 24px)',
                                     background: 'rgba(255, 255, 255, 0.03)',
@@ -716,7 +1173,7 @@ const LiveAuctionProjectorPage = () => {
                                         />
                                     </div>
                                 </div>
-                            )}
+                            )} */}
                         </div>
                     </div>
                 )}
@@ -736,12 +1193,8 @@ const LiveAuctionProjectorPage = () => {
                     padding: 'clamp(10px, 2vh, 24px)',
                     boxSizing: 'border-box',
                 }}>
-                    {/* Fireworks */}
-                    <div style={{ position: 'absolute', width: '100%', height: '100%', top: 0, left: 0, pointerEvents: 'none', zIndex: 1 }}>
-                        {[...Array(12)].map((_, i) => (
-                            <div key={i} className={`fw-${i}`} style={{ position: 'absolute', width: 6, height: 6, borderRadius: '50%', opacity: 0 }} />
-                        ))}
-                    </div>
+                    {/* Canvas Confetti and Fireworks */}
+                    <canvas id="sold-canvas" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }}></canvas>
 
                     <div className="sold-details-container">
                         <div style={{
@@ -843,7 +1296,7 @@ const LiveAuctionProjectorPage = () => {
                                         </g>
                                     </svg>
                                 </div>
-                                <img
+                                {/* <img
                                     src="https://media1.tenor.com/m/Q9woRkqECoQAAAAd/strong.gif"
                                     alt="Strong Celebration"
                                     style={{
@@ -856,7 +1309,7 @@ const LiveAuctionProjectorPage = () => {
                                         objectFit: 'cover',
                                         flexShrink: 0
                                     }}
-                                />
+                                /> */}
                             </div>
 
                             {/* Details Card */}
@@ -995,7 +1448,10 @@ const LiveAuctionProjectorPage = () => {
                     padding: 'clamp(10px, 2vh, 24px)',
                     boxSizing: 'border-box',
                 }}>
-                    <div className="unsold-details-container">
+                    {/* Canvas Stump Shattering Physics */}
+                    <canvas id="unsold-canvas" style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none', zIndex: 1 }}></canvas>
+
+                    <div className="unsold-details-container" style={{ position: 'relative', zIndex: 2 }}>
                         <div style={{
                             fontSize: 'clamp(1rem, 2.8vh, 2.2rem)', color: '#fff',
                             textTransform: 'uppercase', letterSpacing: 'clamp(2px, 1vw, 12px)',
@@ -1029,7 +1485,7 @@ const LiveAuctionProjectorPage = () => {
                             zIndex: 2,
                             animation: 'scaleUp 1s 0.3s both',
                         }}>
-                            {/* Wickets & sad walking cricketer SVG & Jethalal GIF */}
+                            {/* Wickets & sad walking cricketer SVG */}
                             <div style={{ display: 'flex', flexDirection: isSmall ? 'column' : 'row', alignItems: 'center', gap: 'clamp(15px, 2.5vw, 30px)', flexShrink: 0 }}>
                                 <div className="cricket-anim-unsold-static-container" style={{
                                     width: 'clamp(180px, 25vh, 300px)',
@@ -1045,6 +1501,15 @@ const LiveAuctionProjectorPage = () => {
                                                 <stop offset="0%" stopColor="#cd853f" />
                                                 <stop offset="50%" stopColor="#8b5a2b" />
                                                 <stop offset="100%" stopColor="#5c3a21" />
+                                            </linearGradient>
+                                            <linearGradient id="batWood" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                <stop offset="0%" stopColor="#d97706" />
+                                                <stop offset="50%" stopColor="#b45309" />
+                                                <stop offset="100%" stopColor="#78350f" />
+                                            </linearGradient>
+                                            <linearGradient id="batGrip" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                <stop offset="0%" stopColor="#ffd700" />
+                                                <stop offset="100%" stopColor="#b45309" />
                                             </linearGradient>
                                             <radialGradient id="redBallShade" cx="30%" cy="30%" r="70%">
                                                 <stop offset="0%" stopColor="#ff4d4d" />
@@ -1100,20 +1565,6 @@ const LiveAuctionProjectorPage = () => {
                                         </g>
                                     </svg>
                                 </div>
-                                <img
-                                    src="https://media1.tenor.com/m/FqCZEtnZp10AAAAd/jethalal-jethalal-face-expression.gif"
-                                    alt="Jethalal Sad Expression"
-                                    style={{
-                                        width: 'clamp(180px, 25vh, 300px)',
-                                        height: 'auto',
-                                        aspectRatio: '1',
-                                        borderRadius: '16px',
-                                        border: '4px solid #ff4444',
-                                        boxShadow: '0 0 30px rgba(255,68,68,0.4)',
-                                        objectFit: 'cover',
-                                        flexShrink: 0
-                                    }}
-                                />
                             </div>
 
                             {/* Details Card */}

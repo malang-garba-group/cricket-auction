@@ -313,7 +313,7 @@ const PublicTeamsPage = () => {
                                                 <div style={{ display: 'flex', gap: '2rem', justifyContent: isMobile ? 'center' : 'flex-start' }}>
                                                     <div>
                                                         <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', display: 'block', textTransform: 'uppercase', letterSpacing: '1px' }}>Players</span>
-                                                        <span style={{ fontSize: '1.6rem', fontWeight: '900' }}>{squad.length} / {activeAuction.max_players || 15}</span>
+                                                        <span style={{ fontSize: '1.6rem', fontWeight: '900' }}>{squad.length} / {activeAuction.max_players || 11}</span>
                                                     </div>
                                                     <div>
                                                         <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', display: 'block', textTransform: 'uppercase', letterSpacing: '1px' }}>Used</span>
