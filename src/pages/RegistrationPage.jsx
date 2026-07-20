@@ -17,6 +17,8 @@ const RegistrationPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [formError, setFormError] = useState('');
+  const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+  const [invalidLink, setInvalidLink] = useState(false);
 
   const [formData, setFormData] = useState({
     first_name: '', last_name: '', mobile: '', email: '',
@@ -61,13 +63,57 @@ const RegistrationPage = () => {
   };
 
   useEffect(() => {
+    const inviteId = searchParams.get('invite');
+    if (!inviteId) {
+      setInvalidLink(true);
+      setLoading(false);
+      return;
+    } else {
+      setInvalidLink(false);
+    }
+
     if (auctionCodeParam) {
       fetchAuctionByCode(auctionCodeParam);
     } else {
       setActiveAuction(null);
       setLoading(false);
     }
-  }, [auctionCodeParam]);
+  }, [auctionCodeParam, searchParams]);
+
+  useEffect(() => {
+    const inviteId = searchParams.get('invite');
+    if (activeAuction && inviteId) {
+      const validateInvite = async () => {
+        try {
+          const { data: invData, error: invError } = await supabase
+            .from('invitations')
+            .select('*')
+            .eq('id', inviteId)
+            .maybeSingle();
+
+          if (invError) throw invError;
+
+          if (!invData || invData.auction_id !== activeAuction.id) {
+            setInvalidLink(true);
+            return;
+          }
+
+          if (invData.status === 'used') {
+            setAlreadyRegistered(true);
+            setFormData(prev => ({ ...prev, mobile: invData.mobile }));
+            return;
+          }
+
+          // If pending, prefill mobile and lock it
+          setFormData(prev => ({ ...prev, mobile: invData.mobile }));
+        } catch (err) {
+          console.error("Invite validation error:", err);
+          setInvalidLink(true);
+        }
+      };
+      validateInvite();
+    }
+  }, [activeAuction, searchParams]);
 
   const handleVerifyCodeSubmit = (e) => {
     e.preventDefault();
@@ -104,10 +150,30 @@ const RegistrationPage = () => {
         setRegistrationClosed(true);
         throw new Error("Registration just closed as the auction has started!");
       }
+      // Verify and force invitation mobile to prevent client-side HTML tampering
+      const inviteId = searchParams.get('invite');
+      let finalMobile = formData.mobile;
+      if (inviteId) {
+        const { data: invData, error: fetchInvError } = await supabase
+          .from('invitations')
+          .select('mobile, status')
+          .eq('id', inviteId)
+          .maybeSingle();
+        if (fetchInvError || !invData) {
+          throw new Error("Invalid invitation token.");
+        }
+        if (invData.status === 'used') {
+          throw new Error("This invitation link has already been used.");
+        }
+        finalMobile = invData.mobile;
+      } else {
+        throw new Error("Invitation token is required to register.");
+      }
+
       const { data: existingPlayers, error: checkError } = await supabase
         .from('players')
         .select('id')
-        .eq('mobile', formData.mobile)
+        .eq('mobile', finalMobile)
         .limit(1);
 
       if (checkError) throw checkError;
@@ -125,7 +191,7 @@ const RegistrationPage = () => {
       const playerPayload = {
         first_name: formData.first_name,
         last_name: formData.last_name,
-        mobile: formData.mobile,
+        mobile: finalMobile,
         email: formData.email,
         dob: formData.dob || null,
         area: formData.area || null,
@@ -168,6 +234,17 @@ const RegistrationPage = () => {
 
       if (auctionPlayerError) throw auctionPlayerError;
 
+      // Consume/Update invitation status
+      if (inviteId) {
+        const { error: consumeError } = await supabase
+          .from('invitations')
+          .update({ status: 'used' })
+          .eq('id', inviteId);
+        if (consumeError) {
+          console.error("Error consuming invite:", consumeError);
+        }
+      }
+
       setSuccess(true);
     } catch (err) {
       console.error(err);
@@ -178,6 +255,47 @@ const RegistrationPage = () => {
   };
 
   if (loading) return <Loader message="LOADING FORM..." />;
+
+  if (invalidLink) {
+    return (
+      <div className="flex-col min-h-screen">
+        <PageHeader title="Access Denied" showLogos={false} />
+        <main className="container flex-col items-center justify-center text-center" style={{ flex: 1, padding: '4rem 1rem' }}>
+          <div className="glass-panel" style={{ padding: '3rem 2rem', maxWidth: '600px', width: '100%', margin: '0 auto', border: '1px solid rgba(255, 68, 68, 0.3)' }}>
+            <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>🔒</div>
+            <h2 style={{ color: '#ff4444', marginBottom: '1rem' }}>Private Registration</h2>
+            <p className="text-muted" style={{ marginBottom: '2rem' }}>
+              Registration for this tournament is restricted. You must use the personalized link sent by your tournament administrator to register.
+            </p>
+            <a href="#/" className="btn btn-outline">Return to Home Hub</a>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (alreadyRegistered) {
+    return (
+      <div className="flex-col min-h-screen">
+        <PageHeader title="Already Registered" showLogos={false} />
+        <main className="container flex-col items-center justify-center text-center" style={{ flex: 1, padding: '4rem 1rem' }}>
+          <div className="glass-panel" style={{ padding: '3rem 2rem', maxWidth: '600px', width: '100%', margin: '0 auto', border: '1px solid var(--accent-gold)' }}>
+            <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', color: '#000', fontSize: '2.5rem', fontWeight: 'bold' }}>
+              ℹ
+            </div>
+            <h2 style={{ color: 'var(--text-main)', marginBottom: '1rem' }}>Already Registered</h2>
+            <p className="text-muted" style={{ marginBottom: '2rem' }}>
+              You are already registered for this auction under the mobile number: <strong>{formData.mobile}</strong>.
+            </p>
+            <p className="text-muted" style={{ marginBottom: '2rem', fontSize: '0.9rem' }}>
+              Your application is currently pending approval or has already been processed. Please contact the tournament administrator if you need to update your details.
+            </p>
+            <a href="#/" className="btn btn-outline">Return to Home Hub</a>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   if (success) {
     return (
@@ -283,7 +401,16 @@ const RegistrationPage = () => {
               </div>
               <div className="form-group">
                 <label className="form-label">Mobile Number *</label>
-                <input required type="tel" name="mobile" className="form-input" value={formData.mobile} onChange={handleChange} />
+                <input 
+                  required 
+                  type="tel" 
+                  name="mobile" 
+                  className="form-input" 
+                  value={formData.mobile} 
+                  onChange={handleChange} 
+                  readOnly={!!searchParams.get('invite')}
+                  style={searchParams.get('invite') ? { backgroundColor: 'rgba(255,255,255,0.05)', cursor: 'not-allowed', color: 'var(--text-muted)' } : {}}
+                />
               </div>
               <div className="form-group">
                 <label className="form-label">Email address</label>
