@@ -2,18 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import { Loader } from '../components/Loader';
-import { 
-  Trophy, 
-  Users, 
-  Tv, 
-  Activity, 
-  TrendingUp, 
-  UserCheck, 
-  Calendar, 
-  MapPin, 
-  ArrowRight, 
-  Lock, 
-  Menu, 
+import {
+  Trophy,
+  Users,
+  Tv,
+  Activity,
+  TrendingUp,
+  UserCheck,
+  Calendar,
+  MapPin,
+  ArrowRight,
+  Lock,
+  Menu,
   X,
   Search
 } from 'lucide-react';
@@ -256,7 +256,7 @@ const LandingPage = () => {
                 </div>
               </div>
             </div>
-            
+
             <button onClick={handleClearSelected} className="btn btn-outline" style={{ marginTop: '2rem', fontSize: '0.9rem', padding: '0.5rem 1.5rem' }}>
               ← View All Tournaments
             </button>
@@ -272,7 +272,7 @@ const LandingPage = () => {
               allAuctions.map(a => (
                 <div key={a.id} className="landing-feature-card" style={{ textAlign: 'left', position: 'relative' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                    <span style={{ 
+                    <span style={{
                       padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase',
                       background: a.status === 'running' ? 'rgba(239, 68, 68, 0.15)' : a.status === 'registration_open' ? 'rgba(57, 255, 20, 0.15)' : 'rgba(255,255,255,0.06)',
                       color: a.status === 'running' ? '#f87171' : a.status === 'registration_open' ? 'var(--accent-green)' : 'var(--text-muted)'
@@ -302,7 +302,7 @@ const LandingPage = () => {
                         Register
                       </Link>
                     ) : null}
-                    
+
                     {a.status === 'running' ? (
                       <Link to={`/live-auction-projector?code=${a.auction_code}`} className="btn" style={{ padding: '0.4rem 0.8rem', background: '#3b82f6', color: '#fff', fontSize: '0.75rem', fontWeight: 'bold', borderRadius: '4px' }}>
                         Watch Live
@@ -312,7 +312,7 @@ const LandingPage = () => {
                     <Link to={`/teams?code=${a.auction_code}`} className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '4px' }}>
                       Squads
                     </Link>
-                    
+
                     <Link to={`/stats?code=${a.auction_code}`} className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', borderRadius: '4px' }}>
                       Stats
                     </Link>
@@ -503,11 +503,11 @@ const LandingPage = () => {
       <div className="landing-section-divider"></div>
       <section className="landing-contact-section" style={{ padding: '4rem 1rem 6rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', color: '#fff', textAlign: 'center', position: 'relative', zIndex: 1 }}>
         <div className="landing-section-subtitle" style={{ fontSize: '0.85rem', color: 'var(--accent-gold)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.5rem', fontWeight: 'bold' }}>Support & Queries</div>
-        <h2 className="landing-section-title" style={{ fontSize: isMobile ? '2rem' : '2.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 1.5rem 0' }}>CONTACT US</h2>
+        <h2 className="landing-section-title" style={{ fontSize: 'clamp(2rem, 5vw, 2.8rem)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 1.5rem 0' }}>CONTACT US</h2>
         <div className="glass-panel" style={{ padding: '2.5rem 2rem', maxWidth: '500px', width: '100%', border: '1px solid rgba(255,215,0,0.25)', borderRadius: '16px', background: 'rgba(10,15,29,0.6)', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
           <h3 style={{ color: 'var(--accent-gold)', margin: '0 0 0.4rem 0', fontSize: '1.4rem', fontWeight: 'bold', letterSpacing: '0.5px' }}>Ronak Patel</h3>
           <p style={{ color: 'var(--text-muted)', margin: '0 0 2rem 0', fontSize: '0.9rem', fontWeight: 500 }}>Tournament Organizer & Support Helpline</p>
-          <a href="tel:7567924142" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none', color: '#000', backgroundColor: 'var(--accent-gold)', padding: '0.8rem 2rem', borderRadius: '50px', fontWeight: '800', fontSize: '1.05rem', boxShadow: '0 4px 15px rgba(255,215,0,0.3)', transition: 'all 0.2s ease-in-out' }} onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'} onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}>
+          <a href="tel:7567924142" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none', color: '#000', backgroundColor: 'var(--accent-gold)', padding: '0.8rem 2rem', borderRadius: '50px', fontWeight: '800', fontSize: '1.05rem', boxShadow: '0 4px 15px rgba(255,215,0,0.3)', transition: 'all 0.2s ease-in-out' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
             📞 Call: +91 7567924142
           </a>
         </div>

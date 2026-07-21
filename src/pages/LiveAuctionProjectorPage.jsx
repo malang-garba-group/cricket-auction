@@ -798,9 +798,9 @@ const LiveAuctionProjectorPage = () => {
                         }}>
                             {activeAuction?.auction_name || 'LIVE AUCTION'}
                         </h2>
-                        <div style={{ fontSize: 'clamp(0.6rem, 1.2vw, 0.85rem)', color: 'var(--accent-gold)', fontWeight: 'bold', letterSpacing: '1px' }}>
+                        {/* <div style={{ fontSize: 'clamp(0.6rem, 1.2vw, 0.85rem)', color: 'var(--accent-gold)', fontWeight: 'bold', letterSpacing: '1px' }}>
                             Organizer: Ronak Patel (+91 7567924142)
-                        </div>
+                        </div> */}
                     </div>
                     <div
                         onClick={() => fetchData()}
