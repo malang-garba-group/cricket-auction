@@ -217,6 +217,15 @@ const AdminPlayersPage = () => {
       const { error: pError } = await supabase.from('players').delete().eq('id', playerId);
       if (pError) throw pError;
 
+      // Delete corresponding invitation so same mobile number can be re-invited/registered
+      if (playerToDelete && playerToDelete.mobile && activeAuction) {
+        await supabase
+          .from('invitations')
+          .delete()
+          .eq('auction_id', activeAuction.id)
+          .eq('mobile', playerToDelete.mobile.trim());
+      }
+
       setPlayersList(prev => prev.filter(p => p.auction_player_id !== auctionPlayerId));
     } catch (err) {
       console.error(err);

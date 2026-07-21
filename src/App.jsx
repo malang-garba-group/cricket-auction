@@ -28,6 +28,7 @@ const PublicTeamsPage = React.lazy(() => import('./pages/PublicTeamsPage'));
 const StatsPage = React.lazy(() => import('./pages/StatsPage'));
 const TeamBudgetPage = React.lazy(() => import('./pages/TeamBudgetPage'));
 const AdminInvitationsPage = React.lazy(() => import('./pages/AdminInvitationsPage'));
+const AdminSponsorsPage = React.lazy(() => import('./pages/AdminSponsorsPage'));
 
 function App() {
   return (
@@ -52,6 +53,7 @@ function App() {
           <Route path="/team-details" element={<ProtectedRoute><TeamDetailsPage /></ProtectedRoute>} />
           <Route path="/admin-players" element={<ProtectedRoute><AdminPlayersPage /></ProtectedRoute>} />
           <Route path="/admin-invitations" element={<ProtectedRoute><AdminInvitationsPage /></ProtectedRoute>} />
+          <Route path="/admin-sponsors" element={<ProtectedRoute><AdminSponsorsPage /></ProtectedRoute>} />
         </Routes>
       </Suspense>
     </div>

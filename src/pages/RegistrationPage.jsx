@@ -19,6 +19,7 @@ const RegistrationPage = () => {
   const [formError, setFormError] = useState('');
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
   const [invalidLink, setInvalidLink] = useState(false);
+  const [linkExpired, setLinkExpired] = useState(false);
 
   const [formData, setFormData] = useState({
     first_name: '', last_name: '', mobile: '', email: '',
@@ -66,6 +67,7 @@ const RegistrationPage = () => {
     const inviteId = searchParams.get('invite');
     if (!inviteId) {
       setInvalidLink(true);
+      setLinkExpired(false);
       if (auctionCodeParam) {
         fetchAuctionByCode(auctionCodeParam);
       } else {
@@ -75,6 +77,7 @@ const RegistrationPage = () => {
       return;
     } else {
       setInvalidLink(false);
+      setLinkExpired(false);
     }
 
     if (auctionCodeParam) {
@@ -99,7 +102,7 @@ const RegistrationPage = () => {
           if (invError) throw invError;
 
           if (!invData || invData.auction_id !== activeAuction.id) {
-            setInvalidLink(true);
+            setLinkExpired(true);
             return;
           }
 
@@ -113,7 +116,7 @@ const RegistrationPage = () => {
           setFormData(prev => ({ ...prev, mobile: invData.mobile }));
         } catch (err) {
           console.error("Invite validation error:", err);
-          setInvalidLink(true);
+          setLinkExpired(true);
         }
       };
       validateInvite();
@@ -293,6 +296,42 @@ const RegistrationPage = () => {
             <h2 style={{ color: '#ff4444', marginBottom: '1rem' }}>Private Registration</h2>
             <p className="text-muted" style={{ marginBottom: '2rem' }}>
               Registration for this tournament is restricted. You must use the personalized link sent by your tournament administrator to register.
+            </p>
+            <a href="#/" className="btn btn-outline">Return to Home Hub</a>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (linkExpired) {
+    return (
+      <div className="flex-col min-h-screen">
+        <PageHeader title="Link Expired" showLogos={false} />
+        <main className="container flex-col items-center justify-center text-center" style={{ flex: 1, padding: '4rem 1rem' }}>
+          <div className="glass-panel" style={{ padding: '3rem 2rem', maxWidth: '600px', width: '100%', margin: '0 auto', border: '1px solid rgba(255, 68, 68, 0.3)' }}>
+            {activeAuction && activeAuction.auction_logo ? (
+              <img 
+                src={activeAuction.auction_logo} 
+                alt="Auction Logo" 
+                style={{ 
+                  width: '90px', 
+                  height: '90px', 
+                  borderRadius: '12px', 
+                  objectFit: 'contain', 
+                  background: '#fff', 
+                  padding: '6px', 
+                  margin: '0 auto 1.5rem', 
+                  border: '2px solid rgba(255, 68, 68, 0.4)',
+                  boxShadow: '0 0 15px rgba(255, 68, 68, 0.2)'
+                }} 
+              />
+            ) : (
+              <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>⚠️</div>
+            )}
+            <h2 style={{ color: '#ff4444', marginBottom: '1rem' }}>Link Expired</h2>
+            <p className="text-muted" style={{ marginBottom: '2rem' }}>
+              Link expired. Contact the organizer of the tournament.
             </p>
             <a href="#/" className="btn btn-outline">Return to Home Hub</a>
           </div>

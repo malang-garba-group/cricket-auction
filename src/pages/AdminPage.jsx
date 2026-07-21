@@ -118,6 +118,12 @@ const AdminPage = () => {
             <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem', lineHeight: 1.5 }}>Generate secure player registration invitation links.</p>
           </Link>
 
+          <Link to={`/admin-sponsors${codeParam}`} className="glass-panel render-card" style={{ padding: '3rem 2rem', textAlign: 'center', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', border: '1px solid rgba(255,215,0,0.2)' }}>
+            <div style={{ fontSize: '3.5rem' }}>🤝</div>
+            <h3 style={{ color: 'var(--accent-gold)', margin: 0, fontSize: '1.5rem' }}>Manage Sponsors</h3>
+            <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem', lineHeight: 1.5 }}>Configure tournament sponsors, sequence, logo uploads, and status.</p>
+          </Link>
+
           <Link to={`/players${codeParam}`} className="glass-panel render-card" style={{ padding: '3rem 2rem', textAlign: 'center', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
             <div style={{ fontSize: '3.5rem' }}>📋</div>
             <h3 style={{ color: 'var(--text-main)', margin: 0, fontSize: '1.5rem' }}>Public Roster</h3>

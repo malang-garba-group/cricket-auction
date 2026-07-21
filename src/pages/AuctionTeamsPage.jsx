@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../services/supabase';
-import { uploadToCloudinary, deleteFromCloudinary } from '../services/cloudinary';
+import { uploadToCloudinary, deleteFromCloudinary, getOptimizedImageUrl } from '../services/cloudinary';
 import PageHeader from '../components/PageHeader';
 import { Loader } from '../components/Loader';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
@@ -426,7 +426,7 @@ const AuctionTeamsPage = () => {
                                         <li key={p.auction_player_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(57,255,20,0.05)', padding: '0.5rem 0.8rem', borderRadius: '4px', border: '1px solid rgba(57,255,20,0.2)' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                                                 {p.photo_url ? (
-                                                    <img src={p.photo_url} alt="Player" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: '50%' }} />
+                                                    <img src={getOptimizedImageUrl(p.photo_url, 100)} alt="Player" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: '50%' }} />
                                                 ) : (
                                                     <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold', color: '#fff' }}>
                                                         {getPlayerInitials(p)}
@@ -488,7 +488,7 @@ const AuctionTeamsPage = () => {
                                         <li key={p.auction_player_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,215,0,0.05)', padding: '0.5rem 0.8rem', borderRadius: '4px', border: '1px solid rgba(255,215,0,0.2)' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
                                                 {p.photo_url ? (
-                                                    <img src={p.photo_url} alt="Player" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: '50%' }} />
+                                                    <img src={getOptimizedImageUrl(p.photo_url, 100)} alt="Player" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: '50%' }} />
                                                 ) : (
                                                     <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold', color: '#fff' }}>
                                                         {getPlayerInitials(p)}

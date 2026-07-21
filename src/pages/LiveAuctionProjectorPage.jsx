@@ -13,6 +13,7 @@ const LiveAuctionProjectorPage = () => {
     const [activeAuction, setActiveAuction] = useState(null);
     const [activePlayer, setActivePlayer] = useState(null);
     const [teams, setTeams] = useState([]);
+    const [sponsors, setSponsors] = useState([]);
     const [showSoldOverlay, setShowSoldOverlay] = useState(false);
     const [lastSoldPlayer, setLastSoldPlayer] = useState(null);
     const [showUnsoldOverlay, setShowUnsoldOverlay] = useState(false);
@@ -23,6 +24,7 @@ const LiveAuctionProjectorPage = () => {
     const [soldImageError, setSoldImageError] = useState(false);
     const [unsoldImageError, setUnsoldImageError] = useState(false);
     const processedEvents = useRef(new Set());
+    const sponsorsLoadedRef = useRef(false);
 
     useEffect(() => {
         const handleResize = () => {
@@ -33,9 +35,9 @@ const LiveAuctionProjectorPage = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    const fetchData = async () => {
+    const fetchData = async (forceSponsors = false) => {
         try {
-            console.log("Fetching fresh projector data...");
+            console.log("Fetching fresh projector data...", { forceSponsors });
             let auctionData = null;
             if (auctionCode) {
                 const { data } = await supabase
@@ -74,9 +76,26 @@ const LiveAuctionProjectorPage = () => {
                     .maybeSingle();
 
                 setActivePlayer(apData || null);
+
+                // Fetch active sponsors (Only once on initial load, or if forced via clicking)
+                if (!sponsorsLoadedRef.current || forceSponsors) {
+                    console.log("Fetching sponsors from database (Cache miss / forced)...");
+                    const { data: sData } = await supabase
+                        .from('sponsors')
+                        .select('*')
+                        .eq('auction_id', auctionData.id)
+                        .eq('is_active', true)
+                        .order('sequence', { ascending: true });
+                    setSponsors(sData || []);
+                    sponsorsLoadedRef.current = true;
+                } else {
+                    console.log("Using cached sponsors data.");
+                }
             } else {
                 setTeams([]);
                 setActivePlayer(null);
+                setSponsors([]);
+                sponsorsLoadedRef.current = false;
             }
         } catch (err) {
             console.error("Projector fetch error:", err);
@@ -785,9 +804,9 @@ const LiveAuctionProjectorPage = () => {
                 <div style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     flexWrap: 'wrap', gap: '8px',
-                    marginBottom: 'clamp(16px, 4vh, 40px)',
+                    marginBottom: 'clamp(8px, 2vh, 16px)',
                     borderBottom: '2px solid rgba(255,255,255,0.1)',
-                    paddingBottom: 'clamp(12px, 2vh, 24px)',
+                    paddingBottom: 'clamp(6px, 1.2vh, 12px)',
                 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <h2 style={{
@@ -1067,7 +1086,7 @@ const LiveAuctionProjectorPage = () => {
                                         onError={() => setImageError(true)}
                                         style={{
                                             width: 'auto',
-                                            height: isMobile ? 'clamp(200px, 60vw, 350px)' : 'clamp(300px, 40vw, 600px)',
+                                            height: isMobile ? 'clamp(260px, 75vw, 450px)' : 'clamp(420px, 68vh, 750px)',
                                             maxWidth: '100%',
                                             objectFit: 'cover',
                                             borderRadius: 'clamp(12px, 2vw, 30px)',
@@ -1078,12 +1097,12 @@ const LiveAuctionProjectorPage = () => {
                                     />
                                 ) : (
                                     <div style={{
-                                        width: isMobile ? 'clamp(200px, 60vw, 350px)' : 'clamp(300px, 35vw, 500px)',
-                                        height: isMobile ? 'clamp(200px, 60vw, 350px)' : 'clamp(300px, 35vw, 500px)',
+                                        width: isMobile ? 'clamp(260px, 75vw, 450px)' : 'clamp(420px, 68vh, 750px)',
+                                        height: isMobile ? 'clamp(260px, 75vw, 450px)' : 'clamp(420px, 68vh, 750px)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                                         background: 'linear-gradient(135deg, rgba(255,215,0,0.1), rgba(57,255,20,0.05))',
                                         color: 'rgba(255,215,0,0.3)',
-                                        fontSize: isMobile ? 'clamp(4rem, 15vw, 8rem)' : 'clamp(6rem, 15vw, 15rem)',
+                                        fontSize: isMobile ? 'clamp(4.5rem, 20vw, 10rem)' : 'clamp(7rem, 18vh, 20rem)',
                                         fontWeight: 900,
                                         borderRadius: 'clamp(12px, 2vw, 30px)',
                                         border: 'clamp(4px, 0.8vw, 8px) solid #ffd700',
@@ -1113,7 +1132,7 @@ const LiveAuctionProjectorPage = () => {
                         <div style={{
                             display: 'flex', flexDirection: 'column', justifyContent: 'center',
                             color: '#ffd700',
-                            paddingTop: 'clamp(20px, 3vh, 40px)',
+                            paddingTop: 'clamp(10px, 1.5vh, 20px)',
                         }}>
                             <h1 style={{
                                 fontSize: isMobile ? 'clamp(1.4rem, 6vw, 2.5rem)' : 'clamp(1.6rem, 4.5vw, 5rem)',
@@ -1128,7 +1147,7 @@ const LiveAuctionProjectorPage = () => {
                             <div style={{
                                 fontSize: isMobile ? 'clamp(0.7rem, 3vw, 1rem)' : 'clamp(0.75rem, 1.5vw, 1.8rem)',
                                 color: 'rgba(255,255,255,0.7)',
-                                margin: '0 0 clamp(12px, 4vh, 40px) 0',
+                                margin: '0 0 clamp(8px, 2vh, 20px) 0',
                                 display: 'flex',
                                 flexDirection: 'column',
                                 gap: 'clamp(4px, 1vh, 8px)'
@@ -1148,7 +1167,7 @@ const LiveAuctionProjectorPage = () => {
                             <div style={{
                                 background: 'rgba(255,255,255,0.03)',
                                 border: '2px solid rgba(255,215,0,0.2)',
-                                padding: 'clamp(12px, 3vh, 32px)',
+                                padding: 'clamp(10px, 2vh, 20px)',
                                 borderRadius: 'clamp(12px, 2vw, 25px)',
                                 boxShadow: '0 15px 40px rgba(0,0,0,0.4)',
                             }}>
@@ -1176,7 +1195,7 @@ const LiveAuctionProjectorPage = () => {
                                     <div style={{
                                         display: 'flex', alignItems: 'center',
                                         gap: 'clamp(8px, 1.5vw, 20px)',
-                                        padding: 'clamp(8px, 1.5vh, 16px)',
+                                        padding: 'clamp(6px, 1.2vh, 12px)',
                                         background: 'rgba(57,255,20,0.1)',
                                         borderRadius: 'clamp(8px, 1vw, 15px)',
                                         border: '1px solid #39ff14',
@@ -1264,6 +1283,106 @@ const LiveAuctionProjectorPage = () => {
                                     </div>
                                 </div>
                             )} */}
+                        </div>
+                    </div>
+                )}
+
+                {/* Sponsors Ticker */}
+                {activeAuction && sponsors && sponsors.length > 0 && (
+                    <div style={{
+                        marginTop: 'auto',
+                        paddingTop: 'clamp(8px, 1.2vh, 16px)',
+                        borderTop: '1.5px solid rgba(255, 255, 255, 0.08)',
+                        width: '100%',
+                        textAlign: 'center',
+                        zIndex: 2,
+                        overflow: 'hidden'
+                    }}>
+                        <div 
+                            onClick={() => fetchData(true)}
+                            style={{
+                                fontSize: 'clamp(0.6rem, 1.2vw, 0.8rem)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '3px',
+                                color: 'var(--accent-gold)',
+                                marginBottom: 'clamp(6px, 1vh, 12px)',
+                                fontWeight: 'bold',
+                                opacity: 0.8,
+                                cursor: 'pointer',
+                                display: 'inline-block',
+                                userSelect: 'none'
+                            }}
+                            title="Click to reload sponsors"
+                        >
+                            Tournament Sponsors 🔄
+                        </div>
+                        <div style={{
+                            overflow: 'hidden',
+                            width: '100%',
+                            display: 'flex',
+                            maskImage: 'linear-gradient(to right, transparent, white 15%, white 85%, transparent)',
+                            WebkitMaskImage: 'linear-gradient(to right, transparent, white 15%, white 85%, transparent)',
+                        }}>
+                            <div style={{
+                                display: 'flex',
+                                gap: 'clamp(15px, 2.5vw, 35px)',
+                                animation: 'marquee 25s linear infinite',
+                                whiteSpace: 'nowrap',
+                                width: 'max-content',
+                                padding: '4px 0'
+                            }}>
+                                {(sponsors.length < 4 
+                                    ? [...sponsors, ...sponsors, ...sponsors, ...sponsors] 
+                                    : [...sponsors, ...sponsors]
+                                ).map((sponsor, idx) => (
+                                    <div 
+                                        key={`${sponsor.id}-${idx}`} 
+                                        style={{ 
+                                            display: 'inline-flex', 
+                                            flexDirection: 'column',
+                                            alignItems: 'center', 
+                                            gap: '4px',
+                                            background: 'rgba(255, 255, 255, 0.02)',
+                                            padding: '10px 20px',
+                                            borderRadius: '12px',
+                                            border: '1px solid rgba(255, 255, 255, 0.05)',
+                                            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)',
+                                            textAlign: 'center',
+                                            flexShrink: 0
+                                        }}
+                                    >
+                                        {sponsor.photo_url ? (
+                                            <img 
+                                                src={getOptimizedImageUrl(sponsor.photo_url, 200)} 
+                                                alt={sponsor.name} 
+                                                style={{ 
+                                                    height: 'clamp(55px, 8.5vh, 100px)', 
+                                                    width: 'clamp(100px, 13vw, 180px)',
+                                                    objectFit: 'contain',
+                                                    borderRadius: '6px'
+                                                }} 
+                                            />
+                                        ) : (
+                                            <div style={{
+                                                height: 'clamp(55px, 8.5vh, 100px)', 
+                                                width: 'clamp(100px, 13vw, 180px)',
+                                                background: 'rgba(255,255,255,0.05)',
+                                                borderRadius: '6px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '0.75rem',
+                                                color: 'rgba(255,255,255,0.4)',
+                                            }}>
+                                                NO LOGO
+                                            </div>
+                                        )}
+                                        <span style={{ fontSize: 'clamp(0.75rem, 1.3vw, 1rem)', color: 'rgba(255,255,255,0.9)', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                                            {sponsor.name}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -1759,8 +1878,11 @@ const LiveAuctionProjectorPage = () => {
                 </div>
             )}
 
-            {/* Keyframe animations + firework positions (cannot be done inline) */}
             <style>{`
+                @keyframes marquee {
+                    0% { transform: translateX(0); }
+                    100% { transform: translateX(-50%); }
+                }
                 @keyframes pulse {
                     0%   { transform: scale(1); opacity: 1; }
                     50%  { transform: scale(1.05); opacity: 0.8; }
