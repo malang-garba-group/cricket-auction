@@ -789,14 +789,19 @@ const LiveAuctionProjectorPage = () => {
                     borderBottom: '2px solid rgba(255,255,255,0.1)',
                     paddingBottom: 'clamp(12px, 2vh, 24px)',
                 }}>
-                    <h2 style={{
-                        margin: 0, textTransform: 'uppercase',
-                        letterSpacing: 'clamp(2px, 0.8vw, 8px)',
-                        color: 'rgba(255,255,255,0.5)',
-                        fontSize: 'clamp(0.75rem, 2vw, 1.5rem)',
-                    }}>
-                        {activeAuction?.auction_name || 'LIVE AUCTION'}
-                    </h2>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <h2 style={{
+                            margin: 0, textTransform: 'uppercase',
+                            letterSpacing: 'clamp(2px, 0.8vw, 8px)',
+                            color: 'rgba(255,255,255,0.5)',
+                            fontSize: 'clamp(0.75rem, 2vw, 1.5rem)',
+                        }}>
+                            {activeAuction?.auction_name || 'LIVE AUCTION'}
+                        </h2>
+                        <div style={{ fontSize: 'clamp(0.6rem, 1.2vw, 0.85rem)', color: 'var(--accent-gold)', fontWeight: 'bold', letterSpacing: '1px' }}>
+                            Organizer: Ronak Patel (+91 7567924142)
+                        </div>
+                    </div>
                     <div
                         onClick={() => fetchData()}
                         style={{

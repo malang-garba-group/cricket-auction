@@ -499,6 +499,20 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* Contact Section */}
+      <div className="landing-section-divider"></div>
+      <section className="landing-contact-section" style={{ padding: '4rem 1rem 6rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', color: '#fff', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+        <div className="landing-section-subtitle" style={{ fontSize: '0.85rem', color: 'var(--accent-gold)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '0.5rem', fontWeight: 'bold' }}>Support & Queries</div>
+        <h2 className="landing-section-title" style={{ fontSize: isMobile ? '2rem' : '2.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px', margin: '0 0 1.5rem 0' }}>CONTACT US</h2>
+        <div className="glass-panel" style={{ padding: '2.5rem 2rem', maxWidth: '500px', width: '100%', border: '1px solid rgba(255,215,0,0.25)', borderRadius: '16px', background: 'rgba(10,15,29,0.6)', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
+          <h3 style={{ color: 'var(--accent-gold)', margin: '0 0 0.4rem 0', fontSize: '1.4rem', fontWeight: 'bold', letterSpacing: '0.5px' }}>Ronak Patel</h3>
+          <p style={{ color: 'var(--text-muted)', margin: '0 0 2rem 0', fontSize: '0.9rem', fontWeight: 500 }}>Tournament Organizer & Support Helpline</p>
+          <a href="tel:7567924142" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', textDecoration: 'none', color: '#000', backgroundColor: 'var(--accent-gold)', padding: '0.8rem 2rem', borderRadius: '50px', fontWeight: '800', fontSize: '1.05rem', boxShadow: '0 4px 15px rgba(255,215,0,0.3)', transition: 'all 0.2s ease-in-out' }} onMouseEnter={(e)=>e.currentTarget.style.transform='scale(1.05)'} onMouseLeave={(e)=>e.currentTarget.style.transform='scale(1)'}>
+            📞 Call: +91 7567924142
+          </a>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="landing-footer">
         <div className="landing-footer-container">
