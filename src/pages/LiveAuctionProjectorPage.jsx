@@ -939,10 +939,95 @@ const LiveAuctionProjectorPage = () => {
                         alignItems: 'center', justifyContent: 'center',
                         textAlign: 'center', padding: '2rem',
                     }}>
-                        <div style={{ fontSize: 'clamp(4rem, 15vw, 10rem)', opacity: 0.1, marginBottom: '2rem' }}>🏏</div>
-                        <h1 style={{ fontSize: 'clamp(1.2rem, 4vw, 4rem)', color: 'rgba(255,255,255,0.2)', margin: 0 }}>
-                            WAITING FOR NEXT TURN...
+                        <div style={{ position: 'relative', width: '250px', height: '200px', marginBottom: '2rem' }}>
+                            <svg width="250" height="200" viewBox="0 0 250 200" style={{ overflow: 'visible' }}>
+                                <defs>
+                                    <linearGradient id="pitchGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+                                        <stop offset="0%" stopColor="#111827" stopOpacity="0.8" />
+                                        <stop offset="100%" stopColor="transparent" />
+                                    </linearGradient>
+                                    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+                                        <stop offset="0%" stopColor="var(--accent-gold)" stopOpacity="0.3" />
+                                        <stop offset="100%" stopColor="transparent" />
+                                    </radialGradient>
+                                </defs>
+
+                                {/* Glowing background halo */}
+                                <circle cx="125" cy="100" r="80" fill="url(#glow)" style={{ animation: 'pulseGlow 3s infinite ease-in-out' }} />
+
+                                {/* Pitch/Ground representation */}
+                                <ellipse cx="125" cy="145" rx="100" ry="12" fill="url(#pitchGrad)" stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+
+                                {/* Stumps / Wickets */}
+                                <g stroke="rgba(255,255,255,0.3)" strokeWidth="3" strokeLinecap="round" fill="none">
+                                    <line x1="165" y1="140" x2="165" y2="70" />
+                                    <line x1="173" y1="140" x2="173" y2="70" />
+                                    <line x1="181" y1="140" x2="181" y2="70" />
+                                    {/* Bails */}
+                                    <line x1="162" y1="67" x2="184" y2="67" strokeWidth="2.5" stroke="var(--accent-gold)" />
+                                </g>
+
+                                {/* Batsman Silhouette */}
+                                <g className="batsman-anim" style={{ transformOrigin: '70px 140px' }}>
+                                    {/* Body */}
+                                    <path d="M 60,140 Q 55,105 65,90 T 75,70" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="8" strokeLinecap="round" />
+                                    {/* Head */}
+                                    <circle cx="75" cy="60" r="8" fill="rgba(255,255,255,0.5)" />
+                                    {/* Leg Left */}
+                                    <path d="M 60,140 L 52,165" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="8" strokeLinecap="round" />
+                                    {/* Leg Right */}
+                                    <path d="M 60,140 L 70,165" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="8" strokeLinecap="round" />
+                                    
+                                    {/* Arms holding the bat */}
+                                    <path d="M 65,90 Q 85,90 95,95" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="6" strokeLinecap="round" />
+                                    
+                                    {/* Bat */}
+                                    <g>
+                                        {/* Grip */}
+                                        <line x1="70" y1="85" x2="105" y2="55" stroke="#ffd700" strokeWidth="4" strokeLinecap="round" />
+                                        {/* Blade */}
+                                        <path d="M 100,60 L 140,25 L 146,30 L 106,65 Z" fill="var(--accent-gold)" stroke="rgba(0,0,0,0.2)" strokeWidth="1" />
+                                        
+                                        <animateTransform 
+                                            attributeName="transform" 
+                                            type="rotate" 
+                                            values="0 70 85; -35 70 85; 60 70 85; 0 70 85; 0 70 85" 
+                                            keyTimes="0; 0.3; 0.45; 0.7; 1" 
+                                            dur="2.5s" 
+                                            repeatCount="indefinite" 
+                                        />
+                                    </g>
+                                </g>
+
+                                {/* Ball */}
+                                <circle r="7" fill="#ef4444" style={{ filter: 'drop-shadow(0 0 6px #ef4444)' }}>
+                                    <animate attributeName="cx" values="-30; 50; 95; 98; 260" keyTimes="0; 0.25; 0.45; 0.46; 0.65" dur="2.5s" repeatCount="indefinite" />
+                                    <animate attributeName="cy" values="60; 125; 85; 80; -40" keyTimes="0; 0.25; 0.45; 0.46; 0.65" dur="2.5s" repeatCount="indefinite" />
+                                    <animate attributeName="opacity" values="0; 1; 1; 1; 1; 0; 0" keyTimes="0; 0.05; 0.25; 0.45; 0.65; 0.75; 1" dur="2.5s" repeatCount="indefinite" />
+                                </circle>
+
+                                {/* Impact sparks */}
+                                <circle cx="95" cy="85" fill="none" stroke="#fff" strokeWidth="2">
+                                    <animate attributeName="r" values="1; 1; 18; 1" keyTimes="0; 0.43; 0.55; 1" dur="2.5s" repeatCount="indefinite" />
+                                    <animate attributeName="opacity" values="0; 0; 1; 0; 0" keyTimes="0; 0.43; 0.45; 0.55; 1" dur="2.5s" repeatCount="indefinite" />
+                                </circle>
+                            </svg>
+                        </div>
+                        <h1 style={{ 
+                            fontSize: 'clamp(1.5rem, 4vw, 3rem)', 
+                            color: 'var(--accent-gold)', 
+                            margin: 0, 
+                            letterSpacing: '3px',
+                            fontWeight: 900,
+                            textShadow: '0 0 20px rgba(255, 215, 0, 0.4)',
+                            textTransform: 'uppercase',
+                            animation: 'pulseText 2s infinite'
+                        }}>
+                            Waiting for next turn...
                         </h1>
+                        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '1rem', marginTop: '0.5rem', fontStyle: 'italic' }}>
+                            Organizers are preparing the next player card
+                        </p>
                     </div>
                 ) : (
                     <div style={{
@@ -1983,6 +2068,25 @@ const LiveAuctionProjectorPage = () => {
                         opacity: 1;
                         transform: translateY(0);
                     }
+                }
+
+                @keyframes pulseGlow {
+                    0%, 100% { transform: scale(1); opacity: 0.4; }
+                    50% { transform: scale(1.08); opacity: 0.7; }
+                }
+
+                .batsman-anim {
+                    animation: batsmanStance 2.5s infinite ease-in-out;
+                }
+
+                @keyframes batsmanStance {
+                    0%, 100% { transform: scale(1) translate(0, 0); }
+                    50% { transform: scale(1) translate(1px, 0.5px); }
+                }
+
+                @keyframes pulseText {
+                    0%, 100% { opacity: 0.8; text-shadow: 0 0 15px rgba(255, 215, 0, 0.3); }
+                    50% { opacity: 1; text-shadow: 0 0 30px rgba(255, 215, 0, 0.7); }
                 }
             `}</style>
         </div>

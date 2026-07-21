@@ -382,56 +382,71 @@ const AdminPlayersPage = () => {
 
   const backfillPlayerNumbers = async () => {
     if (!activeAuction) return alert('No active auction found.');
-    if (!window.confirm('This will reassign player numbers to all players. Owner players will be numbered first (starting from 1), followed by Icon players, and then all other players. Continue?')) return;
+    if (!window.confirm('This will reassign player numbers to approved players. Owner players will be numbered first (starting from 1), followed by Icon players, and then all other players, with Female players coming last in each category. Continue?')) return;
 
     setActionLoading(true);
     try {
-      // 1. Get all auction_players for this auction
+      // 1. Get all approved auction_players for this auction
       const { data: allPlayers, error: fetchErr } = await supabase
         .from('auction_players')
-        .select('id, player_number, is_icon, is_owner, created_at')
-        .eq('auction_id', activeAuction.id);
+        .select('id, player_id, player_number, is_icon, is_owner, created_at')
+        .eq('auction_id', activeAuction.id)
+        .eq('approval_status', 'approved');
 
       if (fetchErr) throw fetchErr;
       if (!allPlayers || allPlayers.length === 0) {
-        alert('No players found to number.');
+        alert('No approved players found to number.');
         return;
       }
 
-      // 2. Separate into owner, icon, and other players
-      const ownerPlayers = allPlayers.filter(p => p.is_owner);
-      const iconPlayers = allPlayers.filter(p => p.is_icon);
-      const otherPlayers = allPlayers.filter(p => !p.is_owner && !p.is_icon);
+      // 2. Fetch player details to get gender
+      const playerIds = allPlayers.map(ap => ap.player_id);
+      const { data: pData, error: pError } = await supabase
+        .from('players')
+        .select('id, gender')
+        .in('id', playerIds);
 
-      // 3. Sort each group
-      // Sort owner players: by existing player_number (if any), then by created_at
-      ownerPlayers.sort((a, b) => {
-        const numA = a.player_number != null ? a.player_number : Infinity;
-        const numB = b.player_number != null ? b.player_number : Infinity;
-        if (numA !== numB) return numA - numB;
-        return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+      if (pError) throw pError;
+
+      const genderMap = {};
+      (pData || []).forEach(p => {
+        genderMap[p.id] = p.gender;
       });
 
-      // Sort icon players: by existing player_number (if any), then by created_at
-      iconPlayers.sort((a, b) => {
-        const numA = a.player_number != null ? a.player_number : Infinity;
-        const numB = b.player_number != null ? b.player_number : Infinity;
-        if (numA !== numB) return numA - numB;
-        return new Date(a.created_at || 0) - new Date(b.created_at || 0);
-      });
+      const playersWithGender = allPlayers.map(ap => ({
+        ...ap,
+        gender: genderMap[ap.player_id] || ''
+      }));
 
-      // Sort other players: by existing player_number (if any), then by created_at
-      otherPlayers.sort((a, b) => {
-        const numA = a.player_number != null ? a.player_number : Infinity;
-        const numB = b.player_number != null ? b.player_number : Infinity;
-        if (numA !== numB) return numA - numB;
-        return new Date(a.created_at || 0) - new Date(b.created_at || 0);
-      });
+      // 3. Separate into owner, icon, and other players
+      const ownerPlayers = playersWithGender.filter(p => p.is_owner);
+      const iconPlayers = playersWithGender.filter(p => p.is_icon);
+      const otherPlayers = playersWithGender.filter(p => !p.is_owner && !p.is_icon);
 
-      // 4. Combine them: owners first, then icons, then others
+      // 4. Sort each group: Female comes last, then by existing player_number (if any), then by created_at
+      const sortGroup = (group) => {
+        group.sort((a, b) => {
+          // Female comes last
+          const isFemaleA = a.gender === 'Female' ? 1 : 0;
+          const isFemaleB = b.gender === 'Female' ? 1 : 0;
+          if (isFemaleA !== isFemaleB) return isFemaleA - isFemaleB;
+
+          const numA = a.player_number != null ? a.player_number : Infinity;
+          const numB = b.player_number != null ? b.player_number : Infinity;
+          if (numA !== numB) return numA - numB;
+
+          return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+        });
+      };
+
+      sortGroup(ownerPlayers);
+      sortGroup(iconPlayers);
+      sortGroup(otherPlayers);
+
+      // 5. Combine them: owners first, then icons, then others
       const sortedPlayers = [...ownerPlayers, ...iconPlayers, ...otherPlayers];
 
-      // 5. Reset all player_numbers in this auction to null first to avoid unique constraint conflicts
+      // 6. Reset all player_numbers in this auction to null first to avoid unique constraint conflicts
       const { error: resetErr } = await supabase
         .from('auction_players')
         .update({ player_number: null })
@@ -439,7 +454,7 @@ const AdminPlayersPage = () => {
 
       if (resetErr) throw resetErr;
 
-      // 6. Update each player's number sequentially starting from 1
+      // 7. Update each player's number sequentially starting from 1
       for (let i = 0; i < sortedPlayers.length; i++) {
         const p = sortedPlayers[i];
         const newNumber = i + 1;
@@ -451,7 +466,7 @@ const AdminPlayersPage = () => {
         if (updateErr) throw updateErr;
       }
 
-      alert(`✅ Successfully fixed numbering for all ${sortedPlayers.length} player(s)!`);
+      alert(`✅ Successfully fixed numbering for all ${sortedPlayers.length} approved player(s)!`);
       await fetchData();
     } catch (err) {
       console.error(err);
@@ -681,6 +696,7 @@ const AdminPlayersPage = () => {
                       <th style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)' }}>Name</th>
                       <th style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)' }}>Role</th>
                       <th style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)' }}>Mobile</th>
+                      <th style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)' }}>Gender</th>
                       <th style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)' }}>Actions</th>
                     </tr>
                   </thead>
@@ -713,6 +729,7 @@ const AdminPlayersPage = () => {
                         </td>
                         <td style={{ padding: '1rem' }}>{p.player_role}</td>
                         <td style={{ padding: '1rem' }}>{p.mobile}</td>
+                        <td style={{ padding: '1rem' }}>{p.gender || '-'}</td>
                         <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <button disabled={actionLoading} onClick={(e) => { e.stopPropagation(); handleEditClick(p); }} className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>Edit</button>
 

@@ -351,10 +351,10 @@ const PlayersPage = () => {
               <option value="role">Group by Role</option>
             </select>
             <button onClick={handleDownloadPDF} className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', backgroundColor: 'var(--accent-gold)', color: '#000', fontWeight: 'bold' }}>
-              Download PDF
+              Download Approved Players PDF
             </button>
             <button onClick={handleDownloadAllPDF} disabled={downloadingAll} className="btn" style={{ padding: '0.5rem 1rem', fontSize: '0.9rem', backgroundColor: 'var(--accent-green)', color: '#000', fontWeight: 'bold' }}>
-              {downloadingAll ? 'Downloading...' : 'Download All PDF'}
+              {downloadingAll ? 'Downloading...' : 'Download All Registered Players PDF'}
             </button>
           </div>
           <Link to="/admin" className="btn btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}>Admin</Link>
