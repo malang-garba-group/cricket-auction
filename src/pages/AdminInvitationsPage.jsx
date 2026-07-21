@@ -16,6 +16,11 @@ const AdminInvitationsPage = () => {
   const [generating, setGenerating] = useState(false);
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredInvitations = invitations.filter(inv =>
+    inv.mobile && inv.mobile.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -185,10 +190,51 @@ const AdminInvitationsPage = () => {
 
         {/* Invitation list table */}
         <div className="glass-panel" style={{ padding: '2rem', width: '100%' }}>
-          <h3 style={{ color: '#fff', margin: '0 0 1.5rem 0', fontSize: '1.2rem', letterSpacing: '1px', textTransform: 'uppercase' }}>Active Invites</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <h3 style={{ color: '#fff', margin: 0, fontSize: '1.2rem', letterSpacing: '1px', textTransform: 'uppercase' }}>Active Invites</h3>
+            <div style={{ position: 'relative', minWidth: '250px' }}>
+              <input 
+                type="text"
+                placeholder="🔍 Search by mobile..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="form-input"
+                style={{ 
+                  width: '100%', 
+                  padding: '0.5rem 2rem 0.5rem 2.2rem', 
+                  fontSize: '0.9rem', 
+                  borderRadius: '4px',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid var(--glass-border)',
+                  color: '#fff'
+                }}
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  style={{ 
+                    position: 'absolute', 
+                    right: '10px', 
+                    top: '50%', 
+                    transform: 'translateY(-50%)', 
+                    background: 'none', 
+                    border: 'none', 
+                    color: 'var(--text-muted)', 
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    padding: 0
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          </div>
           <div style={{ overflowX: 'auto' }}>
             {invitations.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic', padding: '1rem 0' }}>No invite links generated for this tournament yet.</p>
+            ) : filteredInvitations.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic', padding: '1rem 0' }}>No invites match your search "{searchQuery}".</p>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
                 <thead>
@@ -200,7 +246,7 @@ const AdminInvitationsPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {invitations.map(inv => (
+                  {filteredInvitations.map(inv => (
                     <tr key={inv.id} style={{ borderBottom: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
                       <td style={{ padding: '0.8rem 1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{inv.mobile}</td>
                       <td style={{ padding: '0.8rem 1rem' }}>

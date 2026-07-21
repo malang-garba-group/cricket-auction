@@ -35,7 +35,7 @@ const RegistrationPage = () => {
       setRegistrationClosed(false);
       const { data, error } = await supabase
         .from('auctions')
-        .select('id, auction_name, qr_code_url, per_player_fees, status, auction_code')
+        .select('id, auction_name, qr_code_url, per_player_fees, status, auction_code, auction_logo')
         .eq('auction_code', code)
         .maybeSingle();
 
@@ -66,7 +66,12 @@ const RegistrationPage = () => {
     const inviteId = searchParams.get('invite');
     if (!inviteId) {
       setInvalidLink(true);
-      setLoading(false);
+      if (auctionCodeParam) {
+        fetchAuctionByCode(auctionCodeParam);
+      } else {
+        setActiveAuction(null);
+        setLoading(false);
+      }
       return;
     } else {
       setInvalidLink(false);
@@ -262,7 +267,25 @@ const RegistrationPage = () => {
         <PageHeader title="Access Denied" showLogos={false} />
         <main className="container flex-col items-center justify-center text-center" style={{ flex: 1, padding: '4rem 1rem' }}>
           <div className="glass-panel" style={{ padding: '3rem 2rem', maxWidth: '600px', width: '100%', margin: '0 auto', border: '1px solid rgba(255, 68, 68, 0.3)' }}>
-            <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>🔒</div>
+            {activeAuction && activeAuction.auction_logo ? (
+              <img 
+                src={activeAuction.auction_logo} 
+                alt="Auction Logo" 
+                style={{ 
+                  width: '90px', 
+                  height: '90px', 
+                  borderRadius: '12px', 
+                  objectFit: 'contain', 
+                  background: '#fff', 
+                  padding: '6px', 
+                  margin: '0 auto 1.5rem', 
+                  border: '2px solid rgba(255, 68, 68, 0.4)',
+                  boxShadow: '0 0 15px rgba(255, 68, 68, 0.2)'
+                }} 
+              />
+            ) : (
+              <div style={{ fontSize: '4rem', marginBottom: '1.5rem' }}>🔒</div>
+            )}
             <h2 style={{ color: '#ff4444', marginBottom: '1rem' }}>Private Registration</h2>
             <p className="text-muted" style={{ marginBottom: '2rem' }}>
               Registration for this tournament is restricted. You must use the personalized link sent by your tournament administrator to register.
@@ -280,9 +303,27 @@ const RegistrationPage = () => {
         <PageHeader title="Already Registered" showLogos={false} />
         <main className="container flex-col items-center justify-center text-center" style={{ flex: 1, padding: '4rem 1rem' }}>
           <div className="glass-panel" style={{ padding: '3rem 2rem', maxWidth: '600px', width: '100%', margin: '0 auto', border: '1px solid var(--accent-gold)' }}>
-            <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', color: '#000', fontSize: '2.5rem', fontWeight: 'bold' }}>
-              ℹ
-            </div>
+            {activeAuction && activeAuction.auction_logo ? (
+              <img 
+                src={activeAuction.auction_logo} 
+                alt="Auction Logo" 
+                style={{ 
+                  width: '95px', 
+                  height: '95px', 
+                  borderRadius: '12px', 
+                  objectFit: 'contain', 
+                  background: '#fff', 
+                  padding: '6px', 
+                  margin: '0 auto 1.5rem', 
+                  border: '2px solid var(--accent-gold)',
+                  boxShadow: '0 0 15px rgba(255, 215, 0, 0.2)'
+                }} 
+              />
+            ) : (
+              <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', color: '#000', fontSize: '2.5rem', fontWeight: 'bold' }}>
+                ℹ
+              </div>
+            )}
             <h2 style={{ color: 'var(--text-main)', marginBottom: '1rem' }}>Already Registered</h2>
             <p className="text-muted" style={{ marginBottom: '2rem' }}>
               You are already registered for this auction under the mobile number: <strong>{formData.mobile}</strong>.
