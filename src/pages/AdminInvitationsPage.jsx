@@ -138,6 +138,14 @@ const AdminInvitationsPage = () => {
     alert('Invitation link copied to clipboard!');
   };
 
+  const getWhatsAppLink = (mobile, inviteId) => {
+    const inviteUrl = `${window.location.origin}${window.location.pathname}#/register?code=${auctionCode}&invite=${inviteId}`;
+    const message = `Hello, here is your player registration link for ${activeAuction ? activeAuction.auction_name : 'the tournament'}: ${inviteUrl}`;
+    const cleanMobile = mobile.replace(/\D/g, '');
+    const formattedMobile = cleanMobile.length === 10 ? `91${cleanMobile}` : cleanMobile;
+    return `https://wa.me/${formattedMobile}?text=${encodeURIComponent(message)}`;
+  };
+
   if (!isAuthenticated) return <Navigate to="/admin" replace />;
   if (!auctionCode || (!loading && !activeAuction)) return <Navigate to="/admin" replace />;
   if (loading) return <Loader message="LOADING INVITATION HUB..." />;
@@ -261,10 +269,27 @@ const AdminInvitationsPage = () => {
                       <td style={{ padding: '0.8rem 1rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                         {new Date(inv.created_at).toLocaleString()}
                       </td>
-                      <td style={{ padding: '0.8rem 1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                      <td style={{ padding: '0.8rem 1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                         <button onClick={() => handleCopyLink(inv.id)} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', border: '1px solid var(--accent-gold)', color: 'var(--accent-gold)' }}>
                           Copy Link
                         </button>
+                        <a 
+                          href={getWhatsAppLink(inv.mobile, inv.id)} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="btn btn-outline" 
+                          style={{ 
+                            padding: '0.3rem 0.6rem', 
+                            fontSize: '0.75rem', 
+                            border: '1px solid #25D366', 
+                            color: '#25D366',
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center'
+                          }}
+                        >
+                          WhatsApp Share
+                        </a>
                         <button onClick={() => handleRevokeInvite(inv.id)} className="btn" style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', background: '#ef4444', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
                           Revoke
                         </button>

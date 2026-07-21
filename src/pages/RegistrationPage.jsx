@@ -186,6 +186,10 @@ const RegistrationPage = () => {
         throw new Error("Already registered with this mobile number. Please contact the auction owner.");
       }
 
+      if (!formData.photo) {
+        throw new Error("Player Photo is required.");
+      }
+
       // Upload Images
       let photo_url = null;
       let aadhar_card_url = null;
@@ -516,8 +520,8 @@ const RegistrationPage = () => {
             <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', margin: '2rem 0 1.5rem', color: 'var(--accent-gold)' }}>Documents</h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem 1.5rem' }}>
               <div className="form-group">
-                <label className="form-label">Player Photo (Square aspect ratio preferred)</label>
-                <input type="file" name="photo" accept="image/*" className="form-input" onChange={handleChange} />
+                <label className="form-label">Player Photo * (Square aspect ratio preferred)</label>
+                <input required type="file" name="photo" accept="image/*" className="form-input" onChange={handleChange} />
               </div>
               {/* <div className="form-group">
                 <label className="form-label">Aadhar Card</label>
