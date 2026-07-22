@@ -956,10 +956,10 @@ const LiveAuctionProjectorPage = () => {
                     <div style={{
                         flex: 1, display: 'flex', flexDirection: 'column',
                         alignItems: 'center', justifyContent: 'center',
-                        textAlign: 'center', padding: '2rem',
+                        textAlign: 'center', padding: '1rem',
                     }}>
-                        <div style={{ position: 'relative', width: '250px', height: '200px', marginBottom: '2rem' }}>
-                            <svg width="250" height="200" viewBox="0 0 250 200" style={{ overflow: 'visible' }}>
+                        <div style={{ position: 'relative', width: '250px', height: '160px', marginBottom: '1rem' }}>
+                            <svg width="250" height="160" viewBox="0 0 250 200" style={{ overflow: 'visible' }}>
                                 <defs>
                                     <linearGradient id="pitchGrad" x1="0%" y1="100%" x2="0%" y2="0%">
                                         <stop offset="0%" stopColor="#111827" stopOpacity="0.8" />
@@ -1342,44 +1342,44 @@ const LiveAuctionProjectorPage = () => {
                                             flexDirection: 'column',
                                             alignItems: 'center', 
                                             gap: '4px',
-                                            background: 'rgba(255, 255, 255, 0.02)',
-                                            padding: '10px 20px',
-                                            borderRadius: '12px',
-                                            border: '1px solid rgba(255, 255, 255, 0.05)',
-                                            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.2)',
+                                            background: 'rgba(255, 255, 255, 0.03)',
+                                            padding: '8px 16px',
+                                            borderRadius: '10px',
+                                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                                            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)',
                                             textAlign: 'center',
                                             flexShrink: 0
                                         }}
                                     >
+                                        <span style={{ fontSize: 'clamp(0.8rem, 1.2vw, 1rem)', color: 'rgba(255,255,255,0.95)', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
+                                            {sponsor.name}
+                                        </span>
                                         {sponsor.photo_url ? (
                                             <img 
-                                                src={getOptimizedImageUrl(sponsor.photo_url, 200)} 
+                                                src={getOptimizedImageUrl(sponsor.photo_url, 300)} 
                                                 alt={sponsor.name} 
                                                 style={{ 
-                                                    height: 'clamp(55px, 8.5vh, 100px)', 
-                                                    width: 'clamp(100px, 13vw, 180px)',
+                                                    height: 'clamp(60px, 8.5vh, 95px)', 
+                                                    width: 'clamp(120px, 15vw, 200px)',
                                                     objectFit: 'contain',
                                                     borderRadius: '6px'
                                                 }} 
                                             />
                                         ) : (
                                             <div style={{
-                                                height: 'clamp(55px, 8.5vh, 100px)', 
-                                                width: 'clamp(100px, 13vw, 180px)',
+                                                height: 'clamp(60px, 8.5vh, 95px)', 
+                                                width: 'clamp(120px, 15vw, 200px)',
                                                 background: 'rgba(255,255,255,0.05)',
                                                 borderRadius: '6px',
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                fontSize: '0.75rem',
+                                                fontSize: '0.8rem',
                                                 color: 'rgba(255,255,255,0.4)',
                                             }}>
                                                 NO LOGO
                                             </div>
                                         )}
-                                        <span style={{ fontSize: 'clamp(0.75rem, 1.3vw, 1rem)', color: 'rgba(255,255,255,0.9)', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
-                                            {sponsor.name}
-                                        </span>
                                     </div>
                                 ))}
                             </div>
