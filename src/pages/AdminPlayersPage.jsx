@@ -22,6 +22,7 @@ const AdminPlayersPage = () => {
   const [activeTab, setActiveTab] = useState('pending');
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
+  const [genderFilter, setGenderFilter] = useState('all');
   const itemsPerPage = 20;
   const navigate = useNavigate();
 
@@ -496,7 +497,8 @@ const AdminPlayersPage = () => {
       `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase().includes(lowSearch) ||
       (p.mobile && p.mobile.includes(searchTerm)) ||
       (p.player_number && p.player_number.toString().includes(searchTerm));
-    return matchesTab && matchesSearch;
+    const matchesGender = genderFilter === 'all' || (p.gender && p.gender.toLowerCase() === genderFilter.toLowerCase());
+    return matchesTab && matchesSearch && matchesGender;
   });
 
   const totalPages = Math.ceil(filteredList.length / itemsPerPage);
@@ -683,14 +685,25 @@ const AdminPlayersPage = () => {
                   Rejected ({rejectedCount})
                 </button>
               </div>
-              <div style={{ flex: '1', minWidth: '250px', maxWidth: '400px' }}>
+              <div style={{ display: 'flex', gap: '0.8rem', flex: '1', minWidth: '280px', maxWidth: '550px', alignItems: 'center' }}>
+                <select
+                  value={genderFilter}
+                  onChange={(e) => { setGenderFilter(e.target.value); setCurrentPage(1); }}
+                  className="form-select"
+                  style={{ width: 'auto', minWidth: '130px', border: '1px solid var(--glass-border)', fontSize: '0.9rem' }}
+                >
+                  <option value="all">All Genders</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+
                 <input
                   type="text"
                   placeholder="Search by name, mobile or number..."
                   value={searchTerm}
                   onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                   className="form-input"
-                  style={{ width: '100%', border: '1px solid var(--glass-border)' }}
+                  style={{ flex: 1, border: '1px solid var(--glass-border)' }}
                 />
               </div>
             </div>
