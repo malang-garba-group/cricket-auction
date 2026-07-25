@@ -17,10 +17,22 @@ const AdminInvitationsPage = () => {
   const [inviteError, setInviteError] = useState('');
   const [inviteSuccess, setInviteSuccess] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
 
-  const filteredInvitations = invitations.filter(inv =>
-    inv.mobile && inv.mobile.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const pendingCount = invitations.filter(inv => inv.status === 'pending').length;
+  const usedCount = invitations.filter(inv => inv.status === 'used').length;
+
+  const filteredInvitations = invitations.filter(inv => {
+    const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
+    const matchesSearch = !searchQuery || (inv.mobile && inv.mobile.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesStatus && matchesSearch;
+  });
+
+  const totalPages = Math.ceil(filteredInvitations.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedInvitations = filteredInvitations.slice(startIndex, startIndex + itemsPerPage);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -198,14 +210,49 @@ const AdminInvitationsPage = () => {
 
         {/* Invitation list table */}
         <div className="glass-panel" style={{ padding: '2rem', width: '100%' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-            <h3 style={{ color: '#fff', margin: 0, fontSize: '1.2rem', letterSpacing: '1px', textTransform: 'uppercase' }}>Active Invites</h3>
-            <div style={{ position: 'relative', minWidth: '250px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--glass-border)', paddingBottom: '1rem' }}>
+            {/* Status Filter Tabs */}
+            <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => { setStatusFilter('all'); setCurrentPage(1); }}
+                className={`btn ${statusFilter === 'all' ? 'btn-primary' : 'btn-outline'}`}
+                style={{ padding: '0.4rem 1rem', fontSize: '0.85rem', fontWeight: 600 }}
+              >
+                All ({invitations.length})
+              </button>
+              <button
+                onClick={() => { setStatusFilter('pending'); setCurrentPage(1); }}
+                className={`btn ${statusFilter === 'pending' ? 'btn-primary' : 'btn-outline'}`}
+                style={{
+                  padding: '0.4rem 1rem', fontSize: '0.85rem', fontWeight: 600,
+                  color: statusFilter === 'pending' ? '#000' : '#38bdf8',
+                  borderColor: '#38bdf8',
+                  backgroundColor: statusFilter === 'pending' ? '#38bdf8' : 'transparent'
+                }}
+              >
+                Pending ({pendingCount})
+              </button>
+              <button
+                onClick={() => { setStatusFilter('used'); setCurrentPage(1); }}
+                className={`btn ${statusFilter === 'used' ? 'btn-primary' : 'btn-outline'}`}
+                style={{
+                  padding: '0.4rem 1rem', fontSize: '0.85rem', fontWeight: 600,
+                  color: statusFilter === 'used' ? '#000' : 'var(--accent-green)',
+                  borderColor: 'var(--accent-green)',
+                  backgroundColor: statusFilter === 'used' ? 'var(--accent-green)' : 'transparent'
+                }}
+              >
+                Used ({usedCount})
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div style={{ position: 'relative', minWidth: '240px', maxWidth: '350px', flex: 1 }}>
               <input 
                 type="text"
                 placeholder="🔍 Search by mobile..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
                 className="form-input"
                 style={{ 
                   width: '100%', 
@@ -219,7 +266,7 @@ const AdminInvitationsPage = () => {
               />
               {searchQuery && (
                 <button 
-                  onClick={() => setSearchQuery('')}
+                  onClick={() => { setSearchQuery(''); setCurrentPage(1); }}
                   style={{ 
                     position: 'absolute', 
                     right: '10px', 
@@ -238,11 +285,12 @@ const AdminInvitationsPage = () => {
               )}
             </div>
           </div>
+
           <div style={{ overflowX: 'auto' }}>
             {invitations.length === 0 ? (
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic', padding: '1rem 0' }}>No invite links generated for this tournament yet.</p>
             ) : filteredInvitations.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic', padding: '1rem 0' }}>No invites match your search "{searchQuery}".</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic', padding: '1rem 0' }}>No invites match your filters.</p>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '600px' }}>
                 <thead>
@@ -254,7 +302,7 @@ const AdminInvitationsPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredInvitations.map(inv => (
+                  {paginatedInvitations.map(inv => (
                     <tr key={inv.id} style={{ borderBottom: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
                       <td style={{ padding: '0.8rem 1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{inv.mobile}</td>
                       <td style={{ padding: '0.8rem 1rem' }}>
@@ -300,6 +348,36 @@ const AdminInvitationsPage = () => {
               </table>
             )}
           </div>
+
+          {/* Pagination Bar */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', flexWrap: 'wrap', gap: '1rem', borderTop: '1px solid var(--glass-border)', paddingTop: '1rem' }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Showing {startIndex + 1}-{Math.min(startIndex + itemsPerPage, filteredInvitations.length)} of {filteredInvitations.length} invitations
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="btn btn-outline"
+                  style={{ padding: '0.3rem 0.8rem', fontSize: '0.85rem', opacity: currentPage === 1 ? 0.5 : 1 }}
+                >
+                  Previous
+                </button>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-main)', padding: '0 0.5rem' }}>
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="btn btn-outline"
+                  style={{ padding: '0.3rem 0.8rem', fontSize: '0.85rem', opacity: currentPage === totalPages ? 0.5 : 1 }}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
       </main>

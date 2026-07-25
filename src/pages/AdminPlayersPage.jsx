@@ -23,6 +23,7 @@ const AdminPlayersPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState('all');
+  const [sourceFilter, setSourceFilter] = useState('all');
   const itemsPerPage = 20;
   const navigate = useNavigate();
 
@@ -77,6 +78,14 @@ const AdminPlayersPage = () => {
 
         if (apError) throw apError;
 
+        // Fetch invitations to determine which players registered via invite link
+        const { data: invData } = await supabase
+          .from('invitations')
+          .select('mobile')
+          .eq('auction_id', auctionData.id);
+
+        const invitedMobilesSet = new Set((invData || []).map(i => i.mobile ? i.mobile.trim() : ''));
+
         if (apData && apData.length > 0) {
           const playerIds = apData.map(ap => ap.player_id);
           const { data: pData, error: pError } = await supabase
@@ -88,13 +97,15 @@ const AdminPlayersPage = () => {
 
           const merged = apData.map(ap => {
             const playerDetails = pData.find(p => p.id === ap.player_id) || {};
+            const isViaLink = playerDetails.mobile ? invitedMobilesSet.has(playerDetails.mobile.trim()) : false;
             return {
               ...playerDetails,
               auction_player_id: ap.id,
               approval_status: ap.approval_status,
               is_icon: ap.is_icon || false,
               is_owner: ap.is_owner || false,
-              player_number: ap.player_number ?? null
+              player_number: ap.player_number ?? null,
+              is_via_link: isViaLink
             };
           });
 
@@ -498,7 +509,10 @@ const AdminPlayersPage = () => {
       (p.mobile && p.mobile.includes(searchTerm)) ||
       (p.player_number && p.player_number.toString().includes(searchTerm));
     const matchesGender = genderFilter === 'all' || (p.gender && p.gender.toLowerCase() === genderFilter.toLowerCase());
-    return matchesTab && matchesSearch && matchesGender;
+    const matchesSource = sourceFilter === 'all' || 
+      (sourceFilter === 'link' && p.is_via_link) || 
+      (sourceFilter === 'no_link' && !p.is_via_link);
+    return matchesTab && matchesSearch && matchesGender && matchesSource;
   });
 
   const totalPages = Math.ceil(filteredList.length / itemsPerPage);
@@ -685,7 +699,18 @@ const AdminPlayersPage = () => {
                   Rejected ({rejectedCount})
                 </button>
               </div>
-              <div style={{ display: 'flex', gap: '0.8rem', flex: '1', minWidth: '280px', maxWidth: '550px', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.8rem', flex: '1', minWidth: '320px', maxWidth: '700px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <select
+                  value={sourceFilter}
+                  onChange={(e) => { setSourceFilter(e.target.value); setCurrentPage(1); }}
+                  className="form-select"
+                  style={{ width: 'auto', minWidth: '150px', border: '1px solid var(--glass-border)', fontSize: '0.9rem' }}
+                >
+                  <option value="all">All Sources</option>
+                  <option value="link">🔗 Via Invite Link</option>
+                  <option value="no_link">⚠️ Not via Link (Manual/Direct)</option>
+                </select>
+
                 <select
                   value={genderFilter}
                   onChange={(e) => { setGenderFilter(e.target.value); setCurrentPage(1); }}
@@ -703,19 +728,20 @@ const AdminPlayersPage = () => {
                   value={searchTerm}
                   onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                   className="form-input"
-                  style={{ flex: 1, border: '1px solid var(--glass-border)' }}
+                  style={{ flex: 1, minWidth: '180px', border: '1px solid var(--glass-border)' }}
                 />
               </div>
             </div>
 
             {paginatedList.length === 0 ? <p className="text-muted text-center" style={{ padding: '2rem' }}>No players found in this category.</p> : (
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '800px' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', minWidth: '850px' }}>
                   <thead>
                     <tr style={{ background: 'rgba(255,255,255,0.05)' }}>
                       <th style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)', width: '50px' }}>Player No.</th>
                       <th style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)' }}>Photo</th>
                       <th style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)' }}>Name</th>
+                      <th style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)' }}>Reg Source</th>
                       <th style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)' }}>Role</th>
                       <th style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)' }}>Mobile</th>
                       <th style={{ padding: '1rem', borderBottom: '1px solid var(--glass-border)' }}>Gender</th>
@@ -748,6 +774,17 @@ const AdminPlayersPage = () => {
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.email}</div>
                           {p.is_icon && <span style={{ background: 'var(--accent-gold)', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-block', marginTop: '0.3rem' }}>ICON</span>}
                           {p.is_owner && <span style={{ background: 'var(--accent-green)', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-block', marginTop: '0.3rem', marginLeft: '0.3rem' }}>OWNER</span>}
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          {p.is_via_link ? (
+                            <span style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', border: '1px solid rgba(56, 189, 248, 0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', display: 'inline-block' }}>
+                              🔗 Via Link
+                            </span>
+                          ) : (
+                            <span style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 'bold', display: 'inline-block' }}>
+                              ⚠️ Not via Link
+                            </span>
+                          )}
                         </td>
                         <td style={{ padding: '1rem' }}>{p.player_role}</td>
                         <td style={{ padding: '1rem' }}>{p.mobile}</td>
