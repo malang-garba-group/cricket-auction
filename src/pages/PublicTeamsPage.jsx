@@ -349,7 +349,7 @@ const PublicTeamsPage = () => {
                                                 }}>
                                                     {selectedTeam.team_name}
                                                 </h2>
-                                                <div style={{ display: 'flex', gap: '2rem', justifyContent: isMobile ? 'center' : 'flex-start' }}>
+                                                <div style={{ display: 'flex', gap: '2rem', justifyContent: isMobile ? 'center' : 'flex-start', flexWrap: 'wrap' }}>
                                                     <div>
                                                         <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', display: 'block', textTransform: 'uppercase', letterSpacing: '1px' }}>Players</span>
                                                         <span style={{ fontSize: '1.6rem', fontWeight: '900' }}>{squad.length} / {activeAuction.max_players || 11}</span>
@@ -357,6 +357,22 @@ const PublicTeamsPage = () => {
                                                     <div>
                                                         <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', display: 'block', textTransform: 'uppercase', letterSpacing: '1px' }}>Used</span>
                                                         <span style={{ fontSize: '1.6rem', fontWeight: '900' }}>₹{spent.toLocaleString()}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span style={{ color: 'var(--accent-gold)', fontSize: '0.8rem', display: 'block', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>👑 Captain</span>
+                                                        <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+                                                            {squad.find(p => p.id == selectedTeam.captain_id) 
+                                                                ? `${squad.find(p => p.id == selectedTeam.captain_id).players.first_name} ${squad.find(p => p.id == selectedTeam.captain_id).players.last_name}` 
+                                                                : 'N/A'}
+                                                        </span>
+                                                    </div>
+                                                    <div>
+                                                        <span style={{ color: 'var(--accent-green)', fontSize: '0.8rem', display: 'block', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 'bold' }}>⭐ Vice-Captain</span>
+                                                        <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+                                                            {squad.find(p => p.id == selectedTeam.vice_captain_id) 
+                                                                ? `${squad.find(p => p.id == selectedTeam.vice_captain_id).players.first_name} ${squad.find(p => p.id == selectedTeam.vice_captain_id).players.last_name}` 
+                                                                : 'N/A'}
+                                                        </span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -436,7 +452,11 @@ const PublicTeamsPage = () => {
                                                                 </div>
                                                             )}
                                                             <div>
-                                                                <div style={{ fontWeight: '800', fontSize: '1rem', color: '#fff', textTransform: 'uppercase' }}>{p.players.first_name} {p.players.last_name}</div>
+                                                                <div style={{ fontWeight: '800', fontSize: '1rem', color: '#fff', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                                    <span>{p.players.first_name} {p.players.last_name}</span>
+                                                                    {selectedTeam.captain_id == p.id && <span style={{ background: 'var(--accent-gold)', color: '#000', padding: '0.1rem 0.3rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold' }}>👑 (C)</span>}
+                                                                    {selectedTeam.vice_captain_id == p.id && <span style={{ background: 'var(--accent-green)', color: '#000', padding: '0.1rem 0.3rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold' }}>⭐ (VC)</span>}
+                                                                </div>
                                                                 <div style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontWeight: 'bold' }}>{p.players.player_role.toUpperCase()}</div>
                                                             </div>
                                                         </Link>
@@ -471,7 +491,11 @@ const PublicTeamsPage = () => {
                                                                 </div>
                                                             )}
                                                             <div>
-                                                                <div style={{ fontWeight: '800', fontSize: '1rem', color: '#fff', textTransform: 'uppercase' }}>{p.players.first_name} {p.players.last_name}</div>
+                                                                <div style={{ fontWeight: '800', fontSize: '1rem', color: '#fff', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                                    <span>{p.players.first_name} {p.players.last_name}</span>
+                                                                    {selectedTeam.captain_id == p.id && <span style={{ background: 'var(--accent-gold)', color: '#000', padding: '0.1rem 0.3rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold' }}>👑 (C)</span>}
+                                                                    {selectedTeam.vice_captain_id == p.id && <span style={{ background: 'var(--accent-green)', color: '#000', padding: '0.1rem 0.3rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold' }}>⭐ (VC)</span>}
+                                                                </div>
                                                                 <div style={{ fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: 'bold' }}>{p.players.player_role.toUpperCase()}</div>
                                                             </div>
                                                         </Link>
@@ -524,8 +548,12 @@ const PublicTeamsPage = () => {
                                                                 </div>
                                                             )}
                                                             <div>
-                                                                <div style={{ fontWeight: '700', fontSize: '0.9rem', color: '#fff' }}>{p.players.first_name} {p.players.last_name}</div>
-                                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{p.players.player_role}</div>
+                                                                <div style={{ fontWeight: 'bold', fontSize: '0.95rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                                    <span>{p.players.first_name} {p.players.last_name}</span>
+                                                                    {selectedTeam.captain_id == p.id && <span style={{ background: 'var(--accent-gold)', color: '#000', padding: '0.1rem 0.3rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold' }}>👑 (C)</span>}
+                                                                    {selectedTeam.vice_captain_id == p.id && <span style={{ background: 'var(--accent-green)', color: '#000', padding: '0.1rem 0.3rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold' }}>⭐ (VC)</span>}
+                                                                </div>
+                                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{p.players.player_role}</div>
                                                             </div>
                                                         </div>
                                                         <div style={{ textAlign: 'right' }}>

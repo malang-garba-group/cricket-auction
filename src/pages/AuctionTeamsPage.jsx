@@ -28,6 +28,7 @@ const AuctionTeamsPage = () => {
   const [teams, setTeams] = useState([]);
   const [iconPlayers, setIconPlayers] = useState([]);
   const [ownerPlayers, setOwnerPlayers] = useState([]);
+  const [allAuctionPlayers, setAllAuctionPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -89,15 +90,15 @@ const AuctionTeamsPage = () => {
         }
         setTeams(tData || []);
 
-        // Fetch Icon & Owner Players for this auction
+        // Fetch All Approved Players for this auction
         const { data: apData, error: apError } = await supabase
           .from('auction_players')
           .select('*, players(*)')
           .eq('auction_id', auctionData.id)
-          .eq('approval_status', 'approved')
-          .or('is_icon.eq.true,is_owner.eq.true');
+          .eq('approval_status', 'approved');
 
         if (apError) throw apError;
+        setAllAuctionPlayers(apData || []);
         
         const mappedIcons = (apData || []).filter(ap => ap.is_icon).map(ap => ({
            auction_player_id: ap.id,
@@ -221,11 +222,77 @@ const AuctionTeamsPage = () => {
     }
   };
 
+  const assignCaptain = async (teamId, auctionPlayerId) => {
+    try {
+      setActionLoading(true);
+      const team = teams.find(t => t.id === teamId);
+      const targetId = auctionPlayerId ? (isNaN(auctionPlayerId) ? auctionPlayerId : parseInt(auctionPlayerId, 10)) : null;
+      let payload = { captain_id: targetId };
+      
+      // If selected player is currently vice captain, clear vice captain
+      if (targetId && team?.vice_captain_id == targetId) {
+        payload.vice_captain_id = null;
+      }
+      
+      const { error } = await supabase
+        .from('auction_teams')
+        .update(payload)
+        .eq('id', teamId);
+        
+      if (error) throw error;
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to set Captain.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const assignViceCaptain = async (teamId, auctionPlayerId) => {
+    try {
+      setActionLoading(true);
+      const team = teams.find(t => t.id === teamId);
+      const targetId = auctionPlayerId ? (isNaN(auctionPlayerId) ? auctionPlayerId : parseInt(auctionPlayerId, 10)) : null;
+      let payload = { vice_captain_id: targetId };
+      
+      // If selected player is currently captain, clear captain
+      if (targetId && team?.captain_id == targetId) {
+        payload.captain_id = null;
+      }
+      
+      const { error } = await supabase
+        .from('auction_teams')
+        .update(payload)
+        .eq('id', teamId);
+        
+      if (error) throw error;
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to set Vice-Captain.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const clearLeadershipIfRemoved = async (auctionPlayerId) => {
+    const matchingTeam = teams.find(t => t.captain_id == auctionPlayerId || t.vice_captain_id == auctionPlayerId);
+    if (matchingTeam) {
+      const updates = {};
+      if (matchingTeam.captain_id == auctionPlayerId) updates.captain_id = null;
+      if (matchingTeam.vice_captain_id == auctionPlayerId) updates.vice_captain_id = null;
+      await supabase.from('auction_teams').update(updates).eq('id', matchingTeam.id);
+    }
+  };
+
   const assignOwnerPlayer = async (auctionPlayerId, teamId) => {
     try {
       setActionLoading(true);
       
-      if (teamId && activeAuction) {
+      if (!teamId) {
+        await clearLeadershipIfRemoved(auctionPlayerId);
+      } else if (activeAuction) {
         const teamOwnersCount = ownerPlayers.filter(p => p.team_id == teamId).length;
         const maxOwners = activeAuction.number_of_owner !== null && activeAuction.number_of_owner !== undefined
             ? parseInt(activeAuction.number_of_owner)
@@ -258,7 +325,9 @@ const AuctionTeamsPage = () => {
     try {
       setActionLoading(true);
       
-      if (teamId && activeAuction) {
+      if (!teamId) {
+        await clearLeadershipIfRemoved(auctionPlayerId);
+      } else if (activeAuction) {
         const teamIconsCount = iconPlayers.filter(p => p.team_id == teamId).length;
         const maxIcons = activeAuction.number_of_icon !== null && activeAuction.number_of_icon !== undefined
             ? parseInt(activeAuction.number_of_icon)
@@ -414,6 +483,70 @@ const AuctionTeamsPage = () => {
                             </div>
                         </div>
 
+                        {/* Team Leadership (Captain & Vice-Captain) */}
+                        <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--glass-border)', background: 'rgba(255,215,0,0.02)' }}>
+                            <h4 style={{ margin: '0 0 1rem 0', color: 'var(--accent-gold)', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                👑 Team Leadership
+                            </h4>
+                            
+                            {(() => {
+                                const teamSquad = allAuctionPlayers.filter(ap => ap.team_id === team.id);
+                                const captPlayer = teamSquad.find(ap => ap.id == team.captain_id);
+                                const viceCaptPlayer = teamSquad.find(ap => ap.id == team.vice_captain_id);
+
+                                if (teamSquad.length === 0) {
+                                    return (
+                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>
+                                            Assign icon/owner or auction players to set Captain & Vice-Captain.
+                                        </p>
+                                    );
+                                }
+
+                                return (
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--accent-gold)', fontWeight: 'bold', marginBottom: '0.3rem' }}>
+                                                👑 Captain (C)
+                                            </label>
+                                            <select
+                                                className="form-select"
+                                                style={{ width: '100%', fontSize: '0.82rem', padding: '0.4rem' }}
+                                                value={team.captain_id || ''}
+                                                onChange={(e) => assignCaptain(team.id, e.target.value)}
+                                                disabled={actionLoading}
+                                            >
+                                                <option value="">-- None --</option>
+                                                {teamSquad.map(ap => (
+                                                    <option key={ap.id} value={ap.id}>
+                                                        {ap.players?.first_name} {ap.players?.last_name} ({ap.is_owner ? 'Owner' : ap.is_icon ? 'Icon' : 'Member'})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--accent-green)', fontWeight: 'bold', marginBottom: '0.3rem' }}>
+                                                ⭐ Vice-Captain (VC)
+                                            </label>
+                                            <select
+                                                className="form-select"
+                                                style={{ width: '100%', fontSize: '0.82rem', padding: '0.4rem' }}
+                                                value={team.vice_captain_id || ''}
+                                                onChange={(e) => assignViceCaptain(team.id, e.target.value)}
+                                                disabled={actionLoading}
+                                            >
+                                                <option value="">-- None --</option>
+                                                {teamSquad.map(ap => (
+                                                    <option key={ap.id} value={ap.id}>
+                                                        {ap.players?.first_name} {ap.players?.last_name} ({ap.is_owner ? 'Owner' : ap.is_icon ? 'Icon' : 'Member'})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+
                         {/* Owner Players Section */}
                         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--glass-border)' }}>
                             <h4 style={{ margin: '0 0 1rem 0', color: 'var(--accent-green)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Assigned Owner Players</h4>
@@ -432,7 +565,11 @@ const AuctionTeamsPage = () => {
                                                         {getPlayerInitials(p)}
                                                     </div>
                                                 )}
-                                                <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{p.first_name} {p.last_name}</span>
+                                                <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>
+                                                    {p.first_name} {p.last_name}
+                                                    {team.captain_id == p.auction_player_id && <span style={{ marginLeft: '0.4rem', color: 'var(--accent-gold)', fontSize: '0.75rem' }}>👑 (C)</span>}
+                                                    {team.vice_captain_id == p.auction_player_id && <span style={{ marginLeft: '0.4rem', color: 'var(--accent-green)', fontSize: '0.75rem' }}>⭐ (VC)</span>}
+                                                </span>
                                             </div>
                                             <button 
                                                 onClick={() => assignOwnerPlayer(p.auction_player_id, null)} 
@@ -494,7 +631,11 @@ const AuctionTeamsPage = () => {
                                                         {getPlayerInitials(p)}
                                                     </div>
                                                 )}
-                                                <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>{p.first_name} {p.last_name}</span>
+                                                <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>
+                                                    {p.first_name} {p.last_name}
+                                                    {team.captain_id == p.auction_player_id && <span style={{ marginLeft: '0.4rem', color: 'var(--accent-gold)', fontSize: '0.75rem' }}>👑 (C)</span>}
+                                                    {team.vice_captain_id == p.auction_player_id && <span style={{ marginLeft: '0.4rem', color: 'var(--accent-green)', fontSize: '0.75rem' }}>⭐ (VC)</span>}
+                                                </span>
                                             </div>
                                             <button 
                                                 onClick={() => assignIconPlayer(p.auction_player_id, null)} 
