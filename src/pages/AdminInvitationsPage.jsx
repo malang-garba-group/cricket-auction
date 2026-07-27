@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../services/supabase';
 import PageHeader from '../components/PageHeader';
 import { Loader } from '../components/Loader';
+import { normalizeMobile, formatMobile } from '../utils/phoneUtils';
 
 const AdminInvitationsPage = () => {
   const isAuthenticated = localStorage.getItem('cap_admin_auth') === 'true';
@@ -21,14 +22,58 @@ const AdminInvitationsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 15;
 
+  const duplicateInfoMap = useMemo(() => {
+    const mobileGroups = new Map();
+
+    invitations.forEach(inv => {
+      const normMobile = normalizeMobile(inv.mobile);
+      if (normMobile) {
+        if (!mobileGroups.has(normMobile)) mobileGroups.set(normMobile, []);
+        mobileGroups.get(normMobile).push(inv);
+      }
+    });
+
+    const infoMap = new Map();
+
+    mobileGroups.forEach((invs, normMobile) => {
+      if (invs.length > 1) {
+        invs.forEach(inv => {
+          infoMap.set(inv.id, {
+            isDuplicate: true,
+            reason: `Duplicate Mobile (${formatMobile(normMobile)})`,
+            groupKey: normMobile
+          });
+        });
+      }
+    });
+
+    return infoMap;
+  }, [invitations]);
+
   const pendingCount = invitations.filter(inv => inv.status === 'pending').length;
   const usedCount = invitations.filter(inv => inv.status === 'used').length;
+  const duplicateCount = duplicateInfoMap.size;
 
   const filteredInvitations = invitations.filter(inv => {
-    const matchesStatus = statusFilter === 'all' || inv.status === statusFilter;
-    const matchesSearch = !searchQuery || (inv.mobile && inv.mobile.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesStatus = statusFilter === 'duplicates'
+      ? duplicateInfoMap.has(inv.id)
+      : (statusFilter === 'all' || inv.status === statusFilter);
+
+    const normQuery = normalizeMobile(searchQuery);
+    const matchesSearch = !searchQuery ||
+      (inv.mobile && inv.mobile.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (normQuery && normalizeMobile(inv.mobile).includes(normQuery));
+
     return matchesStatus && matchesSearch;
   });
+
+  if (statusFilter === 'duplicates') {
+    filteredInvitations.sort((a, b) => {
+      const keyA = duplicateInfoMap.get(a.id)?.groupKey || '';
+      const keyB = duplicateInfoMap.get(b.id)?.groupKey || '';
+      return keyA.localeCompare(keyB);
+    });
+  }
 
   const totalPages = Math.ceil(filteredInvitations.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -94,16 +139,17 @@ const AdminInvitationsPage = () => {
     
     setGenerating(true);
     try {
-      // Check if already exists in invitations
-      const { data: existingInvite } = await supabase
+      // Check if already exists in invitations using normalizeMobile
+      const inputNorm = normalizeMobile(inviteMobile);
+      const { data: existingInvites } = await supabase
         .from('invitations')
         .select('*')
-        .eq('auction_id', activeAuction.id)
-        .eq('mobile', inviteMobile.trim())
-        .maybeSingle();
+        .eq('auction_id', activeAuction.id);
+
+      const existingInvite = (existingInvites || []).find(inv => normalizeMobile(inv.mobile) === inputNorm);
 
       if (existingInvite) {
-        throw new Error('An invitation link for this mobile number already exists.');
+        throw new Error(`An invitation link for this mobile number (${existingInvite.mobile}) already exists.`);
       }
 
       // Insert new invitation
@@ -244,6 +290,18 @@ const AdminInvitationsPage = () => {
               >
                 Used ({usedCount})
               </button>
+              <button
+                onClick={() => { setStatusFilter('duplicates'); setCurrentPage(1); }}
+                className={`btn ${statusFilter === 'duplicates' ? 'btn-primary' : 'btn-outline'}`}
+                style={{
+                  padding: '0.4rem 1rem', fontSize: '0.85rem', fontWeight: 600,
+                  color: statusFilter === 'duplicates' ? '#fff' : '#ef4444',
+                  borderColor: '#ef4444',
+                  backgroundColor: statusFilter === 'duplicates' ? '#ef4444' : 'transparent'
+                }}
+              >
+                ⚠️ Duplicates ({duplicateCount})
+              </button>
             </div>
 
             {/* Search Input */}
@@ -302,9 +360,18 @@ const AdminInvitationsPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedInvitations.map(inv => (
+                  {paginatedInvitations.map(inv => {
+                    const dupInfo = duplicateInfoMap.get(inv.id);
+                    return (
                     <tr key={inv.id} style={{ borderBottom: '1px solid var(--glass-border)', background: 'rgba(0,0,0,0.1)' }}>
-                      <td style={{ padding: '0.8rem 1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{inv.mobile}</td>
+                      <td style={{ padding: '0.8rem 1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
+                        <div>{inv.mobile}</div>
+                        {dupInfo && (
+                          <span style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.4)', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-block', marginTop: '0.25rem' }}>
+                            ⚠️ {dupInfo.reason}
+                          </span>
+                        )}
+                      </td>
                       <td style={{ padding: '0.8rem 1rem' }}>
                         <span style={{ 
                           padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase',
@@ -343,7 +410,7 @@ const AdminInvitationsPage = () => {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                  ); })}
                 </tbody>
               </table>
             )}

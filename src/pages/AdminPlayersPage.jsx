@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { supabase } from '../services/supabase';
 import { uploadToCloudinary, deleteFromCloudinary, getOptimizedImageUrl } from '../services/cloudinary';
 import PageHeader from '../components/PageHeader';
 import { Loader } from '../components/Loader';
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { normalizeMobile, formatMobile } from '../utils/phoneUtils';
 
 const getPlayerInitials = (p) => {
   if (!p) return '';
@@ -306,15 +307,22 @@ const AdminPlayersPage = () => {
     try {
       if (!activeAuction) throw new Error("No active auction configuration found.");
 
-      // Check Mobile uniqueness
-      let mobileQuery = supabase.from('players').select('id').eq('mobile', formData.mobile).limit(1);
-      const { data: existingPlayer, error: checkError } = await mobileQuery;
+      // Check Mobile uniqueness using normalizeMobile
+      const inputNorm = normalizeMobile(formData.mobile);
+      if (inputNorm) {
+        const { data: allPlayers, error: checkError } = await supabase
+          .from('players')
+          .select('id, mobile, first_name, last_name');
 
-      if (checkError) throw checkError;
-      if (existingPlayer && existingPlayer.length > 0) {
-        // If editing, make sure the found duplicate isn't the current player
-        if (!editingPlayer || existingPlayer[0].id !== editingPlayer.id) {
-          throw new Error("A player with this mobile number already exists.");
+        if (checkError) throw checkError;
+
+        const existingPlayer = (allPlayers || []).find(p => {
+          if (editingPlayer && p.id === editingPlayer.id) return false;
+          return normalizeMobile(p.mobile) === inputNorm;
+        });
+
+        if (existingPlayer) {
+          throw new Error(`A player with this mobile number already exists (${existingPlayer.first_name} ${existingPlayer.last_name} - ${existingPlayer.mobile}).`);
         }
       }
 
@@ -497,23 +505,63 @@ const AdminPlayersPage = () => {
     }
   };
 
-  if (!isAuthenticated) return <Navigate to="/admin" replace />;
-  if (!auctionCode || (!loading && !activeAuction)) return <Navigate to="/admin" replace />;
-  if (loading) return <Loader message="LOADING ADMIN PLAYERS..." />;
+  const duplicateInfoMap = useMemo(() => {
+    const mobileGroups = new Map();
+
+    playersList.forEach(p => {
+      const normMobile = normalizeMobile(p.mobile);
+      if (normMobile) {
+        if (!mobileGroups.has(normMobile)) mobileGroups.set(normMobile, []);
+        mobileGroups.get(normMobile).push(p);
+      }
+    });
+
+    const infoMap = new Map();
+
+    mobileGroups.forEach((players, normMobile) => {
+      if (players.length > 1) {
+        players.forEach(p => {
+          infoMap.set(p.auction_player_id, {
+            isDuplicate: true,
+            reasons: [`Duplicate Mobile (${formatMobile(normMobile)})`],
+            groupKey: normMobile
+          });
+        });
+      }
+    });
+
+    return infoMap;
+  }, [playersList]);
 
   const filteredList = playersList.filter(p => {
-    const matchesTab = p.approval_status === activeTab;
-    const lowSearch = searchTerm.toLowerCase();
+    const matchesTab = activeTab === 'duplicates'
+      ? duplicateInfoMap.has(p.auction_player_id)
+      : p.approval_status === activeTab;
+
+    const lowSearch = searchTerm.toLowerCase().trim();
+    const normSearch = normalizeMobile(searchTerm);
+
     const matchesSearch = searchTerm === '' ||
       `${p.first_name || ''} ${p.last_name || ''}`.toLowerCase().includes(lowSearch) ||
       (p.mobile && p.mobile.includes(searchTerm)) ||
+      (normSearch && normalizeMobile(p.mobile).includes(normSearch)) ||
       (p.player_number && p.player_number.toString().includes(searchTerm));
+
     const matchesGender = genderFilter === 'all' || (p.gender && p.gender.toLowerCase() === genderFilter.toLowerCase());
     const matchesSource = sourceFilter === 'all' || 
       (sourceFilter === 'link' && p.is_via_link) || 
       (sourceFilter === 'no_link' && !p.is_via_link);
+
     return matchesTab && matchesSearch && matchesGender && matchesSource;
   });
+
+  if (activeTab === 'duplicates') {
+    filteredList.sort((a, b) => {
+      const keyA = duplicateInfoMap.get(a.auction_player_id)?.groupKey || '';
+      const keyB = duplicateInfoMap.get(b.auction_player_id)?.groupKey || '';
+      return keyA.localeCompare(keyB);
+    });
+  }
 
   const totalPages = Math.ceil(filteredList.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -522,6 +570,7 @@ const AdminPlayersPage = () => {
   const pendingCount = playersList.filter(p => p.approval_status === 'pending').length;
   const approvedCount = playersList.filter(p => p.approval_status === 'approved').length;
   const rejectedCount = playersList.filter(p => p.approval_status === 'rejected').length;
+  const duplicateCount = duplicateInfoMap.size;
 
   return (
     <div className="flex-col min-h-screen">
@@ -698,6 +747,18 @@ const AdminPlayersPage = () => {
                 >
                   Rejected ({rejectedCount})
                 </button>
+                <button
+                  onClick={() => { setActiveTab('duplicates'); setCurrentPage(1); }}
+                  className={`btn ${activeTab === 'duplicates' ? 'btn-primary' : 'btn-outline'}`}
+                  style={{
+                    padding: '0.4rem 1.2rem', fontWeight: 600, fontSize: '0.9rem',
+                    color: activeTab === 'duplicates' ? '#fff' : '#ef4444',
+                    borderColor: '#ef4444',
+                    backgroundColor: activeTab === 'duplicates' ? '#ef4444' : 'transparent'
+                  }}
+                >
+                  ⚠️ Duplicates ({duplicateCount})
+                </button>
               </div>
               <div style={{ display: 'flex', gap: '0.8rem', flex: '1', minWidth: '320px', maxWidth: '700px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <select
@@ -749,7 +810,9 @@ const AdminPlayersPage = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedList.map(p => (
+                    {paginatedList.map(p => {
+                      const dupInfo = duplicateInfoMap.get(p.auction_player_id);
+                      return (
                       <tr
                         key={p.auction_player_id}
                         onClick={() => navigate(`/player/${p.id}`, { state: { from: '/admin-players' } })}
@@ -772,8 +835,25 @@ const AdminPlayersPage = () => {
                         <td style={{ padding: '1rem' }}>
                           <div style={{ fontWeight: 'bold' }}>{p.first_name} {p.last_name}</div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.email}</div>
-                          {p.is_icon && <span style={{ background: 'var(--accent-gold)', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-block', marginTop: '0.3rem' }}>ICON</span>}
-                          {p.is_owner && <span style={{ background: 'var(--accent-green)', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', display: 'inline-block', marginTop: '0.3rem', marginLeft: '0.3rem' }}>OWNER</span>}
+                          <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.3rem' }}>
+                            {p.is_icon && <span style={{ background: 'var(--accent-gold)', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>ICON</span>}
+                            {p.is_owner && <span style={{ background: 'var(--accent-green)', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>OWNER</span>}
+                            {activeTab === 'duplicates' && (
+                              <span style={{
+                                background: p.approval_status === 'approved' ? 'rgba(57,255,20,0.15)' : p.approval_status === 'rejected' ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.15)',
+                                color: p.approval_status === 'approved' ? 'var(--accent-green)' : p.approval_status === 'rejected' ? '#f59e0b' : '#aaa',
+                                border: '1px solid currentColor',
+                                padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold', textTransform: 'uppercase'
+                              }}>
+                                {p.approval_status}
+                              </span>
+                            )}
+                            {dupInfo && (
+                              <span style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.4)', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>
+                                ⚠️ {dupInfo.reasons.join(', ')}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td style={{ padding: '1rem' }}>
                           {p.is_via_link ? (
@@ -827,7 +907,7 @@ const AdminPlayersPage = () => {
                           <button disabled={actionLoading} onClick={(e) => { e.stopPropagation(); deletePlayer(p.id, p.auction_player_id); }} className="btn" style={{ background: '#ef4444', color: '#fff', padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>Delete</button>
                         </td>
                       </tr>
-                    ))}
+                    ); })}
                   </tbody>
                 </table>
               </div>

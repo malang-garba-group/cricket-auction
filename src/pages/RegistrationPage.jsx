@@ -4,6 +4,7 @@ import { supabase } from '../services/supabase';
 import { uploadToCloudinary } from '../services/cloudinary';
 import PageHeader from '../components/PageHeader';
 import { Loader } from '../components/Loader';
+import { normalizeMobile } from '../utils/phoneUtils';
 
 const RegistrationPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -178,15 +179,18 @@ const RegistrationPage = () => {
         throw new Error("Invitation token is required to register.");
       }
 
-      const { data: existingPlayers, error: checkError } = await supabase
-        .from('players')
-        .select('id')
-        .eq('mobile', finalMobile)
-        .limit(1);
+      const finalNorm = normalizeMobile(finalMobile);
+      if (finalNorm) {
+        const { data: existingPlayers, error: checkError } = await supabase
+          .from('players')
+          .select('id, mobile');
 
-      if (checkError) throw checkError;
-      if (existingPlayers && existingPlayers.length > 0) {
-        throw new Error("Already registered with this mobile number. Please contact the auction owner.");
+        if (checkError) throw checkError;
+        const isAlreadyRegistered = (existingPlayers || []).some(p => normalizeMobile(p.mobile) === finalNorm);
+
+        if (isAlreadyRegistered) {
+          throw new Error("Already registered with this mobile number. Please contact the auction owner.");
+        }
       }
 
       if (!formData.photo) {
