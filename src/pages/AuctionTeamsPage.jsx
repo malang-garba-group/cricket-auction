@@ -107,7 +107,7 @@ const AuctionTeamsPage = () => {
         }));
         const mappedOwners = (apData || []).filter(ap => ap.is_owner).map(ap => ({
            auction_player_id: ap.id,
-           team_id: ap.team_id,
+           team_id: ap.owner_team_id || ap.previous_bid_team_id || ap.team_id,
            ...ap.players
         }));
         setIconPlayers(mappedIcons);
@@ -234,6 +234,23 @@ const AuctionTeamsPage = () => {
         payload.vice_captain_id = null;
       }
       
+      // Clear previous captain's is_captain flag if any
+      if (team?.captain_id && team?.captain_id != targetId) {
+        await supabase
+          .from('auction_players')
+          .update({ is_captain: false })
+          .eq('id', team.captain_id);
+      }
+
+      // If new captain selected, update auction_players table
+      // Captain is retained by assigned team at 0 cost
+      if (targetId) {
+        await supabase
+          .from('auction_players')
+          .update({ is_captain: true, team_id: teamId, auction_status: null, sold_price: 0 })
+          .eq('id', targetId);
+      }
+
       const { error } = await supabase
         .from('auction_teams')
         .update(payload)
@@ -305,11 +322,29 @@ const AuctionTeamsPage = () => {
         }
       }
 
-      const { error } = await supabase
+      // Owner player belongs to teamId as owner, BUT enters the live auction pool (auction_status: 'pending')
+      const updatePayload = {
+        is_owner: teamId ? true : false,
+        is_icon: false,
+        team_id: teamId || null,
+        previous_bid_team_id: teamId || null,
+        auction_status: teamId ? 'pending' : null,
+        sold_price: 0
+      };
+
+      let { error } = await supabase
         .from('auction_players')
-        .update({ team_id: teamId || null })
+        .update({ ...updatePayload, owner_team_id: teamId || null })
         .eq('id', auctionPlayerId);
-        
+
+      if (error && error.code === 'PGRST204') {
+        const res = await supabase
+          .from('auction_players')
+          .update(updatePayload)
+          .eq('id', auctionPlayerId);
+        error = res.error;
+      }
+
       if (error) throw error;
       
       await fetchData();
@@ -340,9 +375,18 @@ const AuctionTeamsPage = () => {
         }
       }
 
+      // Icon player is retained by assigned team at 0 cost and excluded from live auction
+      const updatePayload = {
+        is_icon: teamId ? true : false,
+        is_owner: false,
+        team_id: teamId || null,
+        auction_status: null,
+        sold_price: 0
+      };
+
       const { error } = await supabase
         .from('auction_players')
-        .update({ team_id: teamId || null })
+        .update(updatePayload)
         .eq('id', auctionPlayerId);
         
       if (error) throw error;
@@ -494,14 +538,7 @@ const AuctionTeamsPage = () => {
                                 const captPlayer = teamSquad.find(ap => ap.id == team.captain_id);
                                 const viceCaptPlayer = teamSquad.find(ap => ap.id == team.vice_captain_id);
 
-                                if (teamSquad.length === 0) {
-                                    return (
-                                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>
-                                            Assign icon/owner or auction players to set Captain & Vice-Captain.
-                                        </p>
-                                    );
-                                }
-
+                                const captCandidates = allAuctionPlayers.filter(ap => (ap.is_captain || team.captain_id == ap.id) && (!ap.team_id || ap.team_id === team.id));
                                 return (
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                         <div>
@@ -516,9 +553,9 @@ const AuctionTeamsPage = () => {
                                                 disabled={actionLoading}
                                             >
                                                 <option value="">-- None --</option>
-                                                {teamSquad.map(ap => (
+                                                {captCandidates.map(ap => (
                                                     <option key={ap.id} value={ap.id}>
-                                                        {ap.players?.first_name} {ap.players?.last_name} ({ap.is_owner ? 'Owner' : ap.is_icon ? 'Icon' : 'Member'})
+                                                        {ap.players?.first_name} {ap.players?.last_name} ({ap.is_owner ? 'Owner' : ap.is_icon ? 'Icon' : 'Captain'})
                                                     </option>
                                                 ))}
                                             </select>

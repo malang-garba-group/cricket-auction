@@ -183,17 +183,14 @@ const LiveAuctionPage = () => {
             setActionLoading(true);
 
             // Calculate next bid
+            const basePrice = activeAuction.base_price || 0;
             const currentBid = activePlayer.current_bid_price || 0;
             let nextBid = 0;
 
             if (!activePlayer.current_bid_team_id) {
-                nextBid = activeAuction.base_price;
+                nextBid = basePrice;
             } else {
-                if (currentBid < 20000) {
-                    nextBid = currentBid + 2000;
-                } else {
-                    nextBid = currentBid + 5000;
-                }
+                nextBid = currentBid + basePrice;
             }
 
             // Check team budget
@@ -430,11 +427,12 @@ const LiveAuctionPage = () => {
 
         try {
             setActionLoading(true);
+            const ownerTeam = activePlayer.owner_team_id || activePlayer.previous_bid_team_id;
             const { error } = await supabase
                 .from('auction_players')
                 .update({
                     auction_status: 'unsold',
-                    team_id: null,
+                    team_id: activePlayer.is_owner ? ownerTeam : null,
                     sold_price: 0,
                     current_bid_price: 0,
                     current_bid_team_id: null
@@ -455,11 +453,12 @@ const LiveAuctionPage = () => {
 
         try {
             setActionLoading(true);
+            const ownerTeam = player.owner_team_id || player.previous_bid_team_id;
             const { error } = await supabase
                 .from('auction_players')
                 .update({
                     auction_status: 'pending',
-                    team_id: null,
+                    team_id: player.is_owner ? ownerTeam : null,
                     sold_price: 0,
                     current_bid_price: 0,
                     current_bid_team_id: null
@@ -536,14 +535,14 @@ const LiveAuctionPage = () => {
     if (loading) return <Loader message="OPENING AUCTION STADIUM..." />;
 
     const pendingPlayers = players.filter(p => {
-        const matchesStatus = !['sold', 'unsold', 'active'].includes(p.auction_status) && !p.is_icon && !p.is_owner;
+        const matchesStatus = !['sold', 'unsold', 'active'].includes(p.auction_status) && !p.is_icon && !p.is_captain;
         const lowSearch = searchTerm.toLowerCase();
         const matchesSearch = (p.players.first_name + ' ' + p.players.last_name).toLowerCase().includes(lowSearch) || 
                               (p.player_number && p.player_number.toString().includes(searchTerm));
         const matchesRole = roleFilter === 'ALL' || p.players.player_role === roleFilter;
         return matchesStatus && matchesSearch && matchesRole;
     });
-    const soldPlayers = players.filter(p => p.auction_status === 'sold');
+    const soldPlayers = players.filter(p => p.auction_status === 'sold' && !p.is_icon && !p.is_captain);
     const unsoldPlayers = players.filter(p => p.auction_status === 'unsold');
 
     // Get unique roles for filter
@@ -624,11 +623,29 @@ const LiveAuctionPage = () => {
                                                 {activePlayer.player_number && <span style={{ color: 'var(--accent-gold)', marginRight: '1rem' }}>#{activePlayer.player_number}</span>}
                                                 {activePlayer.players.first_name} {activePlayer.players.last_name}
                                             </h1>
-                                            <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem' }}>State: {activePlayer.players.state} | Base Price: ₹{activeAuction.base_price}</p>
+                                            <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem' }}>State: {activePlayer.players.state} | Base Price: ₹{(activeAuction.base_price || 0).toLocaleString('en-IN')}</p>
 
-                                            <div style={{ marginTop: '2rem', background: 'rgba(255,215,0,0.1)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--accent-gold)' }}>
+                                            <div style={{ marginTop: '2rem', background: 'rgba(255,215,0,0.1)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--accent-gold)', overflow: 'hidden' }}>
                                                 <div style={{ fontSize: '0.9rem', color: 'var(--accent-gold)', textTransform: 'uppercase', letterSpacing: '2px' }}>Current Highest Bid</div>
-                                                <div style={{ fontSize: '3.5rem', fontWeight: 'bold', color: 'var(--text-main)' }}>₹ {activePlayer.current_bid_price?.toLocaleString() || activeAuction.base_price.toLocaleString()}</div>
+                                                {(() => {
+                                                    const bidVal = activePlayer.current_bid_price || activeAuction.base_price || 0;
+                                                    const bidStr = `₹ ${bidVal.toLocaleString('en-IN')}`;
+                                                    const len = bidStr.length;
+                                                    const fontSz = len > 16 ? '1.8rem' : len > 12 ? '2.4rem' : len > 9 ? '2.9rem' : '3.5rem';
+                                                    return (
+                                                        <div style={{ 
+                                                            fontSize: fontSz, 
+                                                            fontWeight: 'bold', 
+                                                            color: 'var(--text-main)', 
+                                                            whiteSpace: 'nowrap', 
+                                                            overflow: 'hidden', 
+                                                            textOverflow: 'ellipsis',
+                                                            lineHeight: 1.2 
+                                                        }}>
+                                                            {bidStr}
+                                                        </div>
+                                                    );
+                                                })()}
                                                 <div style={{ fontSize: '1.1rem', color: winningTeam ? 'var(--accent-green)' : '#ff4444' }}>
                                                     {winningTeam ? `By: ${winningTeam.team_name}` : 'No Bids Yet'}
                                                 </div>

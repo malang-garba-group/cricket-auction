@@ -1159,8 +1159,8 @@ const LiveAuctionProjectorPage = () => {
                                     <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.9em' }}>Bowling Style:</span>
                                     <span style={{ color: 'var(--accent-gold)', fontWeight: 600 }}>{activePlayer?.players?.bowling_style || 'N/A'}</span>
                                 </div>
-                                <div style={{ opacity: 0.5 }}>
-                                    State: {activePlayer?.players?.state} | Base: ₹{activeAuction?.base_price?.toLocaleString()}
+                                <div style={{ opacity: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    State: {activePlayer?.players?.state} | Base: ₹{(activeAuction?.base_price || 0).toLocaleString('en-IN')}
                                 </div>
                             </div>
 
@@ -1170,6 +1170,7 @@ const LiveAuctionProjectorPage = () => {
                                 padding: 'clamp(10px, 2vh, 20px)',
                                 borderRadius: 'clamp(12px, 2vw, 25px)',
                                 boxShadow: '0 15px 40px rgba(0,0,0,0.4)',
+                                overflow: 'hidden'
                             }}>
                                 <div style={{
                                     fontSize: isMobile ? 'clamp(0.6rem, 2.5vw, 0.9rem)' : 'clamp(0.7rem, 1.2vw, 1.4rem)',
@@ -1180,16 +1181,30 @@ const LiveAuctionProjectorPage = () => {
                                 }}>
                                     Current Bid
                                 </div>
-                                <div style={{
-                                    fontSize: isMobile ? 'clamp(1.8rem, 8vw, 3rem)' : 'clamp(2rem, 7vw, 6rem)',
-                                    fontWeight: 900,
-                                    margin: '0 0 clamp(8px, 1.5vh, 20px) 0',
-                                    fontFamily: 'monospace',
-                                    color: winningTeam ? '#39ff14' : '#fff',
-                                    wordBreak: 'break-all',
-                                }}>
-                                    ₹ {activePlayer?.current_bid_price?.toLocaleString() || activeAuction?.base_price?.toLocaleString()}
-                                </div>
+                                {(() => {
+                                    const bidVal = activePlayer?.current_bid_price || activeAuction?.base_price || 0;
+                                    const bidStr = `₹ ${bidVal.toLocaleString('en-IN')}`;
+                                    const len = bidStr.length;
+                                    let dynamicFontSize = isMobile 
+                                        ? (len > 16 ? '1.3rem' : len > 12 ? '1.7rem' : len > 9 ? '2.1rem' : '2.8rem')
+                                        : (len > 18 ? '2.2rem' : len > 14 ? '2.8rem' : len > 11 ? '3.4rem' : len > 8 ? '4.2rem' : '5.5rem');
+                                    return (
+                                        <div style={{
+                                            fontSize: dynamicFontSize,
+                                            fontWeight: 900,
+                                            margin: '0 0 clamp(8px, 1.5vh, 20px) 0',
+                                            fontFamily: 'monospace',
+                                            color: winningTeam ? '#39ff14' : '#fff',
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            maxWidth: '100%',
+                                            lineHeight: 1.15
+                                        }}>
+                                            {bidStr}
+                                        </div>
+                                    );
+                                })()}
 
                                 {winningTeam ? (
                                     <div style={{

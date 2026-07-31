@@ -73,7 +73,7 @@ const PlayersPage = () => {
         // 1. Fetch approved auction_players mapping (with player_number, is_icon, sold_price, auction_status)
         const { data: apData, error: apError } = await supabase
           .from('auction_players')
-          .select('player_id, player_number, is_icon, is_owner, sold_price, auction_status')
+          .select('player_id, player_number, is_captain, is_icon, is_owner, sold_price, auction_status')
           .eq('auction_id', auctionData.id)
           .eq('approval_status', 'approved');
 
@@ -97,6 +97,7 @@ const PlayersPage = () => {
           apData.forEach(ap => {
             apMap[ap.player_id] = {
               player_number: ap.player_number,
+              is_captain: ap.is_captain,
               is_icon: ap.is_icon,
               is_owner: ap.is_owner,
               sold_price: ap.sold_price,
@@ -107,6 +108,7 @@ const PlayersPage = () => {
           extractedPlayers = (pData || []).map(p => ({
             ...p,
             player_number: apMap[p.id]?.player_number ?? null,
+            is_captain: apMap[p.id]?.is_captain ?? false,
             is_icon: apMap[p.id]?.is_icon ?? false,
             is_owner: apMap[p.id]?.is_owner ?? false,
             sold_price: apMap[p.id]?.sold_price ?? 0,

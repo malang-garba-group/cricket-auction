@@ -28,6 +28,11 @@ const PlayerCard = ({ player, viewMode = 'grid' }) => {
               <span style={{ display: 'inline-block', backgroundColor: 'var(--accent-green)', color: '#000', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
                 {player.player_role?.toUpperCase() || 'PLAYER'}
               </span>
+              {player.is_captain && (
+                <span style={{ display: 'inline-block', backgroundColor: 'var(--accent-gold)', color: '#000', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                  👑 CAPTAIN
+                </span>
+              )}
               {player.is_icon && (
                 <span style={{ display: 'inline-block', backgroundColor: 'var(--accent-gold)', color: '#000', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
                   ICON
@@ -71,16 +76,23 @@ const PlayerCard = ({ player, viewMode = 'grid' }) => {
         </div>
       )}
 
+      {/* CAPTAIN Badge */}
+      {player.is_captain && (
+        <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'var(--accent-gold)', color: '#000', padding: '4px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold', zIndex: 10, letterSpacing: '0.05em' }}>
+          👑 CAPTAIN
+        </div>
+      )}
+
       {/* ICON Badge */}
       {player.is_icon && (
-        <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'var(--accent-gold)', color: '#000', padding: '4px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold', zIndex: 10, letterSpacing: '0.05em' }}>
+        <div style={{ position: 'absolute', top: '10px', left: player.is_captain ? '105px' : '10px', background: 'var(--accent-gold)', color: '#000', padding: '4px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold', zIndex: 10, letterSpacing: '0.05em' }}>
           ICON
         </div>
       )}
 
       {/* OWNER Badge */}
       {player.is_owner && (
-        <div style={{ position: 'absolute', top: '10px', left: player.is_icon ? '70px' : '10px', background: 'var(--accent-green)', color: '#000', padding: '4px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold', zIndex: 10, letterSpacing: '0.05em' }}>
+        <div style={{ position: 'absolute', top: '10px', left: (player.is_captain && player.is_icon) ? '165px' : (player.is_captain || player.is_icon) ? '105px' : '10px', background: 'var(--accent-green)', color: '#000', padding: '4px 10px', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 'bold', zIndex: 10, letterSpacing: '0.05em' }}>
           OWNER
         </div>
       )}

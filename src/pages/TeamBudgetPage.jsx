@@ -14,12 +14,20 @@ const getTeamInitials = (name) => {
   return words.map(w => w.charAt(0)).join('').toUpperCase();
 };
 
+const isTeamOwner = (p, teamId) => {
+    if (!p.is_owner) return false;
+    if (p.owner_team_id) return p.owner_team_id === teamId;
+    if (p.previous_bid_team_id) return p.previous_bid_team_id === teamId;
+    return p.team_id === teamId && !p.sold_price && p.auction_status !== 'sold';
+};
+
 const TeamBudgetPage = () => {
     const [searchParams] = useSearchParams();
     const auctionCodeParam = searchParams.get('code');
     const [allAuctions, setAllAuctions] = useState([]);
     const [activeAuction, setActiveAuction] = useState(null);
     const [teams, setTeams] = useState([]);
+    const [allPlayers, setAllPlayers] = useState([]);
     const [squads, setSquads] = useState({});
     const [loading, setLoading] = useState(true);
     const [expandedTeams, setExpandedTeams] = useState({});
@@ -72,14 +80,14 @@ const TeamBudgetPage = () => {
                 if (tError) throw tError;
                 setTeams(tData || []);
 
-                // Fetch all assigned players
+                // Fetch all auction players
                 const { data: apData, error: apError } = await supabase
                     .from('auction_players')
                     .select('*, players(*)')
-                    .eq('auction_id', auctionData.id)
-                    .not('team_id', 'is', null);
+                    .eq('auction_id', auctionData.id);
 
                 if (apError) throw apError;
+                setAllPlayers(apData || []);
 
                 const grouped = {};
                 (tData || []).forEach(team => {
@@ -220,11 +228,13 @@ const TeamBudgetPage = () => {
                                     const spent = squad.reduce((acc, p) => acc + (p.sold_price || 0), 0);
                                     const maxBudget = activeAuction.max_budget || 0;
                                     const remaining = maxBudget - spent;
-                                    const percentSpent = Math.min((spent / maxBudget) * 100, 100);
-
-                                    const owners = squad.filter(p => p.is_owner);
-                                    const icons = squad.filter(p => p.is_icon);
-                                    const auctioned = squad.filter(p => !p.is_icon && !p.is_owner);
+                                    const percentSpent = maxBudget > 0 ? Math.min((spent / maxBudget) * 100, 100) : 0;
+                                    const owners = allPlayers.filter(p => isTeamOwner(p, team.id));
+                                    const isCaptOrVc = (p) => p.is_captain || p.id == team.captain_id || p.id == team.vice_captain_id;
+                                    const captains = squad.filter(p => isCaptOrVc(p) && !p.is_icon);
+                                    const icons = squad.filter(p => p.is_icon && !isCaptOrVc(p));
+                                    const auctioned = squad.filter(p => !p.is_icon && !isCaptOrVc(p) && (p.sold_price > 0 || p.auction_status === 'sold'));
+                                    const playingSquad = squad.filter(p => !p.is_owner || (p.sold_price > 0 || p.auction_status === 'sold'));
                                     const isExpanded = !!expandedTeams[team.id];
 
                                     return (
@@ -243,7 +253,7 @@ const TeamBudgetPage = () => {
                                                         {team.team_name}
                                                     </h3>
                                                     <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                        Squad Size: {squad.length} / {activeAuction.max_players || 11}
+                                                        Squad Size: {playingSquad.length} / {activeAuction.max_players || 11}
                                                     </span>
                                                 </div>
                                             </div>
@@ -263,11 +273,11 @@ const TeamBudgetPage = () => {
                                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.2rem', background: 'rgba(255,255,255,0.02)', padding: '0.8rem', borderRadius: '8px' }}>
                                                 <div>
                                                     <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Spent</span>
-                                                    <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#fff' }}>₹{spent.toLocaleString()}</span>
+                                                    <span style={{ fontSize: '1rem', fontWeight: 'bold', color: '#fff' }}>₹{spent.toLocaleString('en-IN')}</span>
                                                 </div>
                                                 <div>
                                                     <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Remaining</span>
-                                                    <span style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--accent-green)' }}>₹{remaining.toLocaleString()}</span>
+                                                    <span style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--accent-green)' }}>₹{remaining.toLocaleString('en-IN')}</span>
                                                 </div>
                                             </div>
 
@@ -276,6 +286,11 @@ const TeamBudgetPage = () => {
                                                 <span style={{ padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', background: 'rgba(57,255,20,0.1)', color: 'var(--accent-green)', fontWeight: 'bold' }}>
                                                     O: {owners.length}
                                                 </span>
+                                                {captains.length > 0 && (
+                                                    <span style={{ padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', background: 'rgba(255,215,0,0.15)', color: 'var(--accent-gold)', fontWeight: 'bold' }}>
+                                                        C: {captains.length}
+                                                    </span>
+                                                )}
                                                 <span style={{ padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', background: 'rgba(255,215,0,0.1)', color: 'var(--accent-gold)', fontWeight: 'bold' }}>
                                                     I: {icons.length}
                                                 </span>
@@ -299,10 +314,24 @@ const TeamBudgetPage = () => {
                                                     {owners.length > 0 && (
                                                         <div>
                                                             <span style={{ fontSize: '0.7rem', color: 'var(--accent-green)', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Owners</span>
-                                                            {owners.map(p => (
+                                                            {owners.map(p => {
+                                                                const playingTeam = p.team_id && p.team_id !== team.id ? teams.find(t => t.id === p.team_id) : null;
+                                                                return (
+                                                                    <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                                                                        <span>{p.players.first_name} {p.players.last_name} {playingTeam ? `(Bought by ${playingTeam.team_name})` : ''}</span>
+                                                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{p.players.player_role}</span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    )}
+                                                    {captains.length > 0 && (
+                                                        <div>
+                                                            <span style={{ fontSize: '0.7rem', color: 'var(--accent-gold)', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Captain / VC</span>
+                                                            {captains.map(p => (
                                                                 <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-main)' }}>
                                                                     <span>{p.players.first_name} {p.players.last_name}</span>
-                                                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{p.players.player_role}</span>
+                                                                    <span style={{ color: 'var(--accent-gold)', fontSize: '0.75rem' }}>👑 Retained (₹0)</span>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -313,7 +342,7 @@ const TeamBudgetPage = () => {
                                                             {icons.map(p => (
                                                                 <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-main)' }}>
                                                                     <span>{p.players.first_name} {p.players.last_name}</span>
-                                                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{p.players.player_role}</span>
+                                                                    <span style={{ color: 'var(--accent-gold)', fontSize: '0.75rem' }}>⭐ Retained (₹0)</span>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -324,7 +353,7 @@ const TeamBudgetPage = () => {
                                                             {auctioned.map(p => (
                                                                 <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', alignItems: 'center', color: 'var(--text-main)' }}>
                                                                     <span>{p.players.first_name} {p.players.last_name} <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>({p.players.player_role})</span></span>
-                                                                    <span style={{ fontWeight: 'bold' }}>₹{p.sold_price.toLocaleString()}</span>
+                                                                    <span style={{ fontWeight: 'bold' }}>₹{p.sold_price?.toLocaleString('en-IN')}</span>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -346,11 +375,13 @@ const TeamBudgetPage = () => {
                                     const spent = squad.reduce((acc, p) => acc + (p.sold_price || 0), 0);
                                     const maxBudget = activeAuction.max_budget || 0;
                                     const remaining = maxBudget - spent;
-                                    const percentSpent = Math.min((spent / maxBudget) * 100, 100);
-
-                                    const owners = squad.filter(p => p.is_owner);
-                                    const icons = squad.filter(p => p.is_icon);
-                                    const auctioned = squad.filter(p => !p.is_icon && !p.is_owner);
+                                    const percentSpent = maxBudget > 0 ? Math.min((spent / maxBudget) * 100, 100) : 0;
+                                    const owners = allPlayers.filter(p => isTeamOwner(p, team.id));
+                                    const isCaptOrVc = (p) => p.is_captain || p.id == team.captain_id || p.id == team.vice_captain_id;
+                                    const captains = squad.filter(p => isCaptOrVc(p) && !p.is_icon);
+                                    const icons = squad.filter(p => p.is_icon && !isCaptOrVc(p));
+                                    const auctioned = squad.filter(p => !p.is_icon && !isCaptOrVc(p) && (p.sold_price > 0 || p.auction_status === 'sold'));
+                                    const playingSquad = squad.filter(p => !p.is_owner || (p.sold_price > 0 || p.auction_status === 'sold'));
                                     const isExpanded = !!expandedTeams[team.id];
 
                                     return (
@@ -367,7 +398,7 @@ const TeamBudgetPage = () => {
                                                     )}
                                                     <div>
                                                         <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--accent-gold)', textTransform: 'uppercase' }}>{team.team_name}</h3>
-                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Squad Size: {squad.length} / {activeAuction.max_players || 11}</span>
+                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Squad Size: {playingSquad.length} / {activeAuction.max_players || 11}</span>
                                                     </div>
                                                 </div>
 
@@ -386,11 +417,11 @@ const TeamBudgetPage = () => {
                                                 <div style={{ display: 'flex', gap: '1.5rem', flex: '0 1 auto', minWidth: '220px' }}>
                                                     <div>
                                                         <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Spent Purse</span>
-                                                        <span style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#fff' }}>₹{spent.toLocaleString()}</span>
+                                                        <span style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#fff' }}>₹{spent.toLocaleString('en-IN')}</span>
                                                     </div>
                                                     <div>
                                                         <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Remaining Purse</span>
-                                                        <span style={{ fontSize: '0.95rem', fontWeight: 'bold', color: 'var(--accent-green)' }}>₹{remaining.toLocaleString()}</span>
+                                                        <span style={{ fontSize: '0.95rem', fontWeight: 'bold', color: 'var(--accent-green)' }}>₹{remaining.toLocaleString('en-IN')}</span>
                                                     </div>
                                                 </div>
 
@@ -412,13 +443,28 @@ const TeamBudgetPage = () => {
                                                     {/* Owners block */}
                                                     <div>
                                                         <span style={{ fontSize: '0.7rem', color: 'var(--accent-green)', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '0.4rem', borderBottom: '1px solid rgba(57,255,20,0.1)', paddingBottom: '0.2rem' }}>Owners ({owners.length})</span>
-                                                        {owners.length === 0 ? <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>None</p> : owners.map(p => (
-                                                            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', padding: '0.15rem 0' }}>
-                                                                <span>{p.players.first_name} {p.players.last_name}</span>
-                                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{p.players.player_role}</span>
-                                                            </div>
-                                                        ))}
+                                                        {owners.length === 0 ? <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>None</p> : owners.map(p => {
+                                                            const playingTeam = p.team_id && p.team_id !== team.id ? teams.find(t => t.id === p.team_id) : null;
+                                                            return (
+                                                                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', padding: '0.15rem 0' }}>
+                                                                    <span>{p.players.first_name} {p.players.last_name} {playingTeam ? `(Bought by ${playingTeam.team_name})` : ''}</span>
+                                                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{p.players.player_role}</span>
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
+                                                    {/* Captains block */}
+                                                    {captains.length > 0 && (
+                                                        <div>
+                                                            <span style={{ fontSize: '0.7rem', color: 'var(--accent-gold)', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '0.4rem', borderBottom: '1px solid rgba(255,215,0,0.1)', paddingBottom: '0.2rem' }}>Captain / VC ({captains.length})</span>
+                                                            {captains.map(p => (
+                                                                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', padding: '0.15rem 0' }}>
+                                                                    <span>{p.players.first_name} {p.players.last_name}</span>
+                                                                    <span style={{ color: 'var(--accent-gold)', fontSize: '0.75rem' }}>👑 Retained (₹0)</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                     {/* Icons block */}
                                                     <div>
                                                         <span style={{ fontSize: '0.7rem', color: 'var(--accent-gold)', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '0.4rem', borderBottom: '1px solid rgba(255,215,0,0.1)', paddingBottom: '0.2rem' }}>Icons ({icons.length})</span>

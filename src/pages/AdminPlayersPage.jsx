@@ -38,6 +38,7 @@ const AdminPlayersPage = () => {
     dob: '', area: '', gender: '',
     player_role: '', batting_style: '', bowling_style: '',
     photo: null, aadhar: null,
+    is_captain: false,
     is_icon: false,
     is_owner: false
   };
@@ -103,6 +104,7 @@ const AdminPlayersPage = () => {
               ...playerDetails,
               auction_player_id: ap.id,
               approval_status: ap.approval_status,
+              is_captain: ap.is_captain || false,
               is_icon: ap.is_icon || false,
               is_owner: ap.is_owner || false,
               player_number: ap.player_number ?? null,
@@ -146,16 +148,20 @@ const AdminPlayersPage = () => {
     }
   };
 
-  const toggleOwnerStatus = async (auctionPlayerId, currentStatus) => {
+  const toggleCaptainStatus = async (auctionPlayerId, currentStatus) => {
     try {
       setActionLoading(true);
-      const newOwnerStatus = !currentStatus;
+      const newCaptainStatus = !currentStatus;
 
-      const updatePayload = { is_owner: newOwnerStatus };
-      if (newOwnerStatus) {
-        updatePayload.is_icon = false;
-      } else {
+      const updatePayload = { 
+        is_captain: newCaptainStatus,
+        auction_status: null,
+        sold_price: 0
+      };
+      const playerObj = playersList.find(p => p.auction_player_id === auctionPlayerId);
+      if (!newCaptainStatus && !playerObj?.is_icon && !playerObj?.is_owner) {
         updatePayload.team_id = null;
+        updatePayload.auction_status = 'pending';
       }
 
       const { error } = await supabase
@@ -166,11 +172,50 @@ const AdminPlayersPage = () => {
       if (error) throw error;
       setPlayersList(prev => prev.map(p => p.auction_player_id === auctionPlayerId ? { 
         ...p, 
-        is_owner: newOwnerStatus, 
-        is_icon: newOwnerStatus ? false : p.is_icon 
+        is_captain: newCaptainStatus
       } : p));
 
-      if (!newOwnerStatus) await fetchData();
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update captain status');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const toggleOwnerStatus = async (auctionPlayerId, currentStatus) => {
+    try {
+      setActionLoading(true);
+      const newOwnerStatus = !currentStatus;
+
+      const updatePayload = { 
+        is_owner: newOwnerStatus,
+        auction_status: newOwnerStatus ? 'pending' : null,
+        sold_price: 0
+      };
+      if (newOwnerStatus) {
+        updatePayload.is_icon = false;
+      }
+      const playerObj = playersList.find(p => p.auction_player_id === auctionPlayerId);
+      if (!newOwnerStatus && !playerObj?.is_icon && !playerObj?.is_captain) {
+        updatePayload.team_id = null;
+        updatePayload.previous_bid_team_id = null;
+      }
+
+      const { error } = await supabase
+        .from('auction_players')
+        .update(updatePayload)
+        .eq('id', auctionPlayerId);
+
+      if (error) throw error;
+      setPlayersList(prev => prev.map(p => p.auction_player_id === auctionPlayerId ? { 
+        ...p, 
+        is_owner: newOwnerStatus,
+        is_icon: newOwnerStatus ? false : p.is_icon
+      } : p));
+
+      await fetchData();
     } catch (err) {
       console.error(err);
       alert('Failed to update owner status');
@@ -184,11 +229,18 @@ const AdminPlayersPage = () => {
       setActionLoading(true);
       const newIconStatus = !currentStatus;
 
-      const updatePayload = { is_icon: newIconStatus };
+      const updatePayload = { 
+        is_icon: newIconStatus,
+        auction_status: null,
+        sold_price: 0
+      };
       if (newIconStatus) {
         updatePayload.is_owner = false;
-      } else {
+      }
+      const playerObj = playersList.find(p => p.auction_player_id === auctionPlayerId);
+      if (!newIconStatus && !playerObj?.is_owner && !playerObj?.is_captain) {
         updatePayload.team_id = null;
+        updatePayload.auction_status = 'pending';
       }
 
       const { error } = await supabase
@@ -199,12 +251,11 @@ const AdminPlayersPage = () => {
       if (error) throw error;
       setPlayersList(prev => prev.map(p => p.auction_player_id === auctionPlayerId ? { 
         ...p, 
-        is_icon: newIconStatus, 
-        is_owner: newIconStatus ? false : p.is_owner 
+        is_icon: newIconStatus,
+        is_owner: newIconStatus ? false : p.is_owner
       } : p));
 
-      // If we removed icon status, we might need to refresh to reflect team changes in UI
-      if (!newIconStatus) await fetchData();
+      await fetchData();
     } catch (err) {
       console.error(err);
       alert('Failed to update icon status');
@@ -257,6 +308,7 @@ const AdminPlayersPage = () => {
       dob: p.dob || '', area: p.area || '', gender: p.gender || '',
       player_role: p.player_role || '', batting_style: p.batting_style || '', bowling_style: p.bowling_style || '',
       photo: null, aadhar: null,
+      is_captain: p.is_captain || false,
       is_icon: p.is_icon || false,
       is_owner: p.is_owner || false
     });
@@ -351,12 +403,13 @@ const AdminPlayersPage = () => {
         const { error: updateError } = await supabase.from('players').update(playerPayload).eq('id', editingPlayer.id);
         if (updateError) throw updateError;
 
-        // UPDATE auction_players specifically for is_icon and is_owner
+        // UPDATE auction_players specifically for is_captain, is_icon and is_owner
         const apUpdatePayload = {
+          is_captain: formData.is_captain || false,
           is_icon: formData.is_icon || false,
           is_owner: formData.is_owner || false
         };
-        if (!formData.is_icon && !formData.is_owner) {
+        if (!formData.is_captain && !formData.is_icon && !formData.is_owner) {
           apUpdatePayload.team_id = null;
         }
 
@@ -386,6 +439,7 @@ const AdminPlayersPage = () => {
           auction_id: activeAuction.id,
           player_id: newPlayerData.id,
           approval_status: 'approved', // Automatically auto-approve Admins directly adding players
+          is_captain: formData.is_captain || false,
           is_icon: formData.is_icon || false,
           is_owner: formData.is_owner || false,
           player_number: nextNumber
@@ -534,9 +588,18 @@ const AdminPlayersPage = () => {
   }, [playersList]);
 
   const filteredList = playersList.filter(p => {
-    const matchesTab = activeTab === 'duplicates'
-      ? duplicateInfoMap.has(p.auction_player_id)
-      : p.approval_status === activeTab;
+    let matchesTab = false;
+    if (activeTab === 'duplicates') {
+      matchesTab = duplicateInfoMap.has(p.auction_player_id);
+    } else if (activeTab === 'captain') {
+      matchesTab = !!p.is_captain;
+    } else if (activeTab === 'icon') {
+      matchesTab = !!p.is_icon;
+    } else if (activeTab === 'owner') {
+      matchesTab = !!p.is_owner;
+    } else {
+      matchesTab = p.approval_status === activeTab;
+    }
 
     const lowSearch = searchTerm.toLowerCase().trim();
     const normSearch = normalizeMobile(searchTerm);
@@ -570,6 +633,9 @@ const AdminPlayersPage = () => {
   const pendingCount = playersList.filter(p => p.approval_status === 'pending').length;
   const approvedCount = playersList.filter(p => p.approval_status === 'approved').length;
   const rejectedCount = playersList.filter(p => p.approval_status === 'rejected').length;
+  const captainCount = playersList.filter(p => p.is_captain).length;
+  const iconCount = playersList.filter(p => p.is_icon).length;
+  const ownerCount = playersList.filter(p => p.is_owner).length;
   const duplicateCount = duplicateInfoMap.size;
 
   return (
@@ -695,6 +761,12 @@ const AdminPlayersPage = () => {
                 </div>
                 <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '0.5rem' }}>
                   <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer', margin: 0, padding: '0.5rem', background: 'rgba(255,215,0,0.1)', borderRadius: '4px', border: '1px solid var(--accent-gold)' }}>
+                    <input type="checkbox" name="is_captain" checked={formData.is_captain} onChange={handleFormChange} style={{ width: '1.2rem', height: '1.2rem', accentColor: 'var(--accent-gold)' }} />
+                    <span style={{ color: 'var(--accent-gold)', fontWeight: 'bold' }}>Mark as Captain Player</span>
+                  </label>
+                </div>
+                <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '0.5rem' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer', margin: 0, padding: '0.5rem', background: 'rgba(255,215,0,0.1)', borderRadius: '4px', border: '1px solid var(--accent-gold)' }}>
                     <input type="checkbox" name="is_icon" checked={formData.is_icon} onChange={handleFormChange} style={{ width: '1.2rem', height: '1.2rem', accentColor: 'var(--accent-gold)' }} />
                     <span style={{ color: 'var(--accent-gold)', fontWeight: 'bold' }}>Mark as Icon Player</span>
                   </label>
@@ -746,6 +818,42 @@ const AdminPlayersPage = () => {
                   }}
                 >
                   Rejected ({rejectedCount})
+                </button>
+                <button
+                  onClick={() => { setActiveTab('captain'); setCurrentPage(1); }}
+                  className={`btn ${activeTab === 'captain' ? 'btn-primary' : 'btn-outline'}`}
+                  style={{
+                    padding: '0.4rem 1.2rem', fontWeight: 600, fontSize: '0.9rem',
+                    color: activeTab === 'captain' ? '#000' : 'var(--accent-gold)',
+                    borderColor: 'var(--accent-gold)',
+                    backgroundColor: activeTab === 'captain' ? 'var(--accent-gold)' : 'transparent'
+                  }}
+                >
+                  👑 Captains ({captainCount})
+                </button>
+                <button
+                  onClick={() => { setActiveTab('icon'); setCurrentPage(1); }}
+                  className={`btn ${activeTab === 'icon' ? 'btn-primary' : 'btn-outline'}`}
+                  style={{
+                    padding: '0.4rem 1.2rem', fontWeight: 600, fontSize: '0.9rem',
+                    color: activeTab === 'icon' ? '#000' : 'var(--accent-gold)',
+                    borderColor: 'var(--accent-gold)',
+                    backgroundColor: activeTab === 'icon' ? 'var(--accent-gold)' : 'transparent'
+                  }}
+                >
+                  ⭐ Icons ({iconCount})
+                </button>
+                <button
+                  onClick={() => { setActiveTab('owner'); setCurrentPage(1); }}
+                  className={`btn ${activeTab === 'owner' ? 'btn-primary' : 'btn-outline'}`}
+                  style={{
+                    padding: '0.4rem 1.2rem', fontWeight: 600, fontSize: '0.9rem',
+                    color: activeTab === 'owner' ? '#000' : 'var(--accent-green)',
+                    borderColor: 'var(--accent-green)',
+                    backgroundColor: activeTab === 'owner' ? 'var(--accent-green)' : 'transparent'
+                  }}
+                >
+                  🏷️ Owners ({ownerCount})
                 </button>
                 <button
                   onClick={() => { setActiveTab('duplicates'); setCurrentPage(1); }}
@@ -836,6 +944,7 @@ const AdminPlayersPage = () => {
                           <div style={{ fontWeight: 'bold' }}>{p.first_name} {p.last_name}</div>
                           <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{p.email}</div>
                           <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.3rem' }}>
+                            {p.is_captain && <span style={{ background: 'var(--accent-gold)', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>👑 CAPTAIN</span>}
                             {p.is_icon && <span style={{ background: 'var(--accent-gold)', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>ICON</span>}
                             {p.is_owner && <span style={{ background: 'var(--accent-green)', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 'bold' }}>OWNER</span>}
                             {activeTab === 'duplicates' && (
@@ -871,6 +980,19 @@ const AdminPlayersPage = () => {
                         <td style={{ padding: '1rem' }}>{p.gender || '-'}</td>
                         <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <button disabled={actionLoading} onClick={(e) => { e.stopPropagation(); handleEditClick(p); }} className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>Edit</button>
+
+                          <button
+                            disabled={actionLoading}
+                            onClick={(e) => { e.stopPropagation(); toggleCaptainStatus(p.auction_player_id, p.is_captain); }}
+                            className="btn btn-outline"
+                            style={{
+                              padding: '0.4rem 0.8rem', fontSize: '0.8rem',
+                              color: p.is_captain ? 'var(--accent-gold)' : '',
+                              borderColor: p.is_captain ? 'var(--accent-gold)' : ''
+                            }}
+                          >
+                            {p.is_captain ? 'Remove Captain' : 'Make Captain'}
+                          </button>
 
                           <button
                             disabled={actionLoading}

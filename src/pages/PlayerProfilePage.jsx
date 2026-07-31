@@ -26,7 +26,7 @@ const PlayerProfilePage = () => {
       try {
         const { data, error } = await supabase
           .from('players')
-          .select('*, auction_players(is_icon, is_owner)')
+          .select('*, auction_players(is_captain, is_icon, is_owner)')
           .eq('id', id)
           .single();
 
@@ -121,6 +121,11 @@ const PlayerProfilePage = () => {
               <span style={{ backgroundColor: 'var(--accent-gold)', color: '#000', padding: '0.4rem 0.8rem', fontSize: '1rem', fontWeight: 800, borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                 {player.player_role || 'PLAYER'}
               </span>
+              {player.auction_players?.some(ap => ap.is_captain) && (
+                <span style={{ backgroundColor: 'var(--accent-gold)', color: '#000', padding: '0.4rem 0.8rem', fontSize: '1rem', fontWeight: 800, borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                  👑 CAPTAIN
+                </span>
+              )}
               {player.auction_players?.some(ap => ap.is_icon) && (
                 <span style={{ backgroundColor: '#f59e0b', color: '#000', padding: '0.4rem 0.8rem', fontSize: '1rem', fontWeight: 800, borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                   ICON

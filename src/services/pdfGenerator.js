@@ -85,14 +85,14 @@ export const generateAllTeamsPDF = async (activeAuction, teams, squads) => {
     startY = 44;
 
     // Filter and Sort players: Captain first, then Vice-Captain, Icons, Owners, then auctioned players sorted by sold price descending
-    const isCapt = (p) => team.captain_id && (p.id === team.captain_id || p.auction_player_id === team.captain_id);
+    const isCapt = (p) => p.is_captain || (team.captain_id && (p.id === team.captain_id || p.auction_player_id === team.captain_id));
     const isViceCapt = (p) => team.vice_captain_id && (p.id === team.vice_captain_id || p.auction_player_id === team.vice_captain_id);
 
     const captains = squad.filter(p => isCapt(p));
     const viceCaptains = squad.filter(p => isViceCapt(p) && !isCapt(p));
     const icons = squad.filter(p => p.is_icon && !isCapt(p) && !isViceCapt(p));
     const owners = squad.filter(p => p.is_owner && !isCapt(p) && !isViceCapt(p));
-    const auctioned = squad.filter(p => !p.is_icon && !p.is_owner && !isCapt(p) && !isViceCapt(p));
+    const auctioned = squad.filter(p => !p.is_icon && !p.is_owner && !p.is_captain && !isCapt(p) && !isViceCapt(p));
     const sortedAuctioned = [...auctioned].sort((a, b) => (b.sold_price || 0) - (a.sold_price || 0));
     
     const combinedPlayers = [...captains, ...viceCaptains, ...icons, ...owners, ...sortedAuctioned];
@@ -119,7 +119,7 @@ export const generateAllTeamsPDF = async (activeAuction, teams, squads) => {
         playerDetails.player_role || '-',
         playerDetails.batting_style || '-',
         playerDetails.bowling_style || '-',
-        (p.is_icon || p.is_owner) && !p.sold_price ? (p.is_icon ? 'Icon Player' : 'Owner Player') : `INR ${(p.sold_price || 0).toLocaleString()}`,
+        (!p.sold_price && (p.is_icon || p.is_captain || capt || viceCapt)) ? 'Retained (₹0)' : `INR ${(p.sold_price || 0).toLocaleString()}`,
         designation
       ];
     });
