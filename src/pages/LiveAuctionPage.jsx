@@ -579,7 +579,8 @@ const LiveAuctionPage = () => {
                     >
                         UNSOLD ({unsoldPlayers.length})
                     </button>
-                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '1rem' }}>
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                        <Link to={`/draw?code=${auctionCode}`} className="btn" style={{ padding: '0.6rem 1rem', background: 'var(--accent-gold)', color: '#000', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>🎰 Random Draw</Link>
                         <Link to="/team-details" className="btn btn-outline" style={{ padding: '0.6rem 1rem' }}>Team Roster & Purse</Link>
                         <Link to="/admin" className="btn btn-outline" style={{ padding: '0.6rem 1rem' }}>Back to Admin</Link>
                     </div>

@@ -29,6 +29,7 @@ const StatsPage = React.lazy(() => import('./pages/StatsPage'));
 const TeamBudgetPage = React.lazy(() => import('./pages/TeamBudgetPage'));
 const AdminInvitationsPage = React.lazy(() => import('./pages/AdminInvitationsPage'));
 const AdminSponsorsPage = React.lazy(() => import('./pages/AdminSponsorsPage'));
+const RandomDrawPage = React.lazy(() => import('./pages/RandomDrawPage'));
 
 function App() {
   return (
@@ -47,6 +48,8 @@ function App() {
           <Route path="/players" element={<ProtectedRoute><PlayersPage /></ProtectedRoute>} />
           <Route path="/player/:id" element={<PlayerProfilePage />} />
           <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
+          <Route path="/draw" element={<ProtectedRoute><RandomDrawPage /></ProtectedRoute>} />
+          <Route path="/admin-draw" element={<ProtectedRoute><RandomDrawPage /></ProtectedRoute>} />
           <Route path="/auction" element={<ProtectedRoute><AuctionPage /></ProtectedRoute>} />
           <Route path="/auction-teams" element={<ProtectedRoute><AuctionTeamsPage /></ProtectedRoute>} />
           <Route path="/live-auction" element={<ProtectedRoute><LiveAuctionPage /></ProtectedRoute>} />

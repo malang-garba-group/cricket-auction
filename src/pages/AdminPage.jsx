@@ -130,6 +130,12 @@ const AdminPage = () => {
             <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem', lineHeight: 1.5 }}>Preview the live public-facing grid of all approved players.</p>
           </Link>
 
+          <Link to={`/draw${codeParam}`} className="glass-panel render-card" style={{ padding: '3rem 2rem', textAlign: 'center', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', border: '1px solid var(--accent-gold)' }}>
+            <div style={{ fontSize: '3.5rem' }}>🎰</div>
+            <h3 style={{ color: 'var(--accent-gold)', margin: 0, fontSize: '1.5rem' }}>Random Draw</h3>
+            <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem', lineHeight: 1.5 }}>Select gender (Male/Female), hold numbers, and generate random player for bidding.</p>
+          </Link>
+
           <Link to={`/live-auction${codeParam}`} className="glass-panel render-card" style={{ padding: '3rem 2rem', textAlign: 'center', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
             <div style={{ fontSize: '3.5rem' }}>🔥</div>
             <h3 style={{ color: '#ff4444', margin: 0, fontSize: '1.5rem' }}>Live Auction</h3>
