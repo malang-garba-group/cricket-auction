@@ -27,10 +27,23 @@ const TeamDetailsPage = () => {
     const auctionCode = searchParams.get('code') || localStorage.getItem('cap_admin_selected_auction_code');
 
     const [loading, setLoading] = useState(true);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
     const [activeAuction, setActiveAuction] = useState(null);
     const [teams, setTeams] = useState([]);
     const [squads, setSquads] = useState({});
     const [selectedTeamId, setSelectedTeamId] = useState(null);
+
+    const handleDownloadPdf = async () => {
+        setIsGeneratingPdf(true);
+        try {
+            await generateAllTeamsPDF(activeAuction, teams, squads);
+        } catch (err) {
+            console.error("PDF generation failed:", err);
+            alert("Failed to generate PDF.");
+        } finally {
+            setIsGeneratingPdf(false);
+        }
+    };
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -139,7 +152,8 @@ const TeamDetailsPage = () => {
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                         {activeAuction && teams.length > 0 && (
                             <button 
-                                onClick={() => generateAllTeamsPDF(activeAuction, teams, squads)}
+                                onClick={handleDownloadPdf}
+                                disabled={isGeneratingPdf}
                                 className="btn btn-outline" 
                                 style={{ 
                                     padding: '0.5rem 1.2rem', 
@@ -149,11 +163,12 @@ const TeamDetailsPage = () => {
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '0.5rem',
-                                    cursor: 'pointer',
-                                    background: 'transparent'
+                                    cursor: isGeneratingPdf ? 'wait' : 'pointer',
+                                    background: 'transparent',
+                                    opacity: isGeneratingPdf ? 0.7 : 1
                                 }}
                             >
-                                <Download size={16} /> Download Teams PDF
+                                <Download size={16} /> {isGeneratingPdf ? 'Generating PDF with photos...' : 'Download Teams PDF'}
                             </button>
                         )}
                         <Link to="/live-auction" className="btn btn-primary" style={{ padding: '0.5rem 1.2rem', background: 'var(--accent-gold)', fontSize: '0.9rem' }}>Live Bidding</Link>

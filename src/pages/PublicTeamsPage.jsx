@@ -5,7 +5,7 @@ import { Loader } from '../components/Loader';
 import EmptyState from '../components/EmptyState';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getOptimizedImageUrl } from '../services/cloudinary';
-import { generateAllTeamsPDF } from '../services/pdfGenerator';
+import { generateAllTeamsPDF, generatePlayerSlidesPDF } from '../services/pdfGenerator';
 import { Download } from 'lucide-react';
 
 const getTeamInitials = (name) => {
@@ -28,11 +28,43 @@ const PublicTeamsPage = () => {
     const [allAuctions, setAllAuctions] = useState([]);
 
     const [loading, setLoading] = useState(true);
+    const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+    const [isGeneratingSlides, setIsGeneratingSlides] = useState(false);
     const [activeAuction, setActiveAuction] = useState(null);
     const [teams, setTeams] = useState([]);
     const [squads, setSquads] = useState({});
     const [selectedTeamId, setSelectedTeamId] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+
+    const handleDownloadPdf = async () => {
+        setIsGeneratingPdf(true);
+        try {
+            await generateAllTeamsPDF(activeAuction, teams, squads);
+        } catch (err) {
+            console.error("PDF generation failed:", err);
+            alert("Failed to generate PDF.");
+        } finally {
+            setIsGeneratingPdf(false);
+        }
+    };
+
+    const handleDownloadSlidesPdf = async () => {
+        if (!selectedTeamId || !squads[selectedTeamId] || squads[selectedTeamId].length === 0) {
+            alert("No players in selected team to generate slides PDF.");
+            return;
+        }
+        const teamObj = teams.find(t => t.id === selectedTeamId);
+        const teamSquad = squads[selectedTeamId] || [];
+        setIsGeneratingSlides(true);
+        try {
+            await generatePlayerSlidesPDF(teamSquad, `${teamObj?.team_name || 'Team'}_Player_Slides.pdf`, activeAuction);
+        } catch (err) {
+            console.error("PDF slides generation failed:", err);
+            alert("Failed to generate PDF slides.");
+        } finally {
+            setIsGeneratingSlides(false);
+        }
+    };
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth < 1024);
@@ -148,37 +180,54 @@ const PublicTeamsPage = () => {
             />
 
             {activeAuction && teams.length > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem', zIndex: 10, position: 'relative' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', marginBottom: '1.5rem', zIndex: 10, position: 'relative', flexWrap: 'wrap' }}>
                     <button 
-                        onClick={() => generateAllTeamsPDF(activeAuction, teams, squads)}
+                        onClick={handleDownloadPdf}
+                        disabled={isGeneratingPdf}
                         className="btn"
                         style={{ 
                             padding: '0.6rem 1.5rem', 
-                            background: 'var(--accent-green)', 
+                            background: isGeneratingPdf ? 'rgba(57, 255, 20, 0.5)' : 'var(--accent-green)', 
                             color: '#000', 
                             fontWeight: 'bold',
                             borderRadius: '8px',
-                            cursor: 'pointer',
+                            cursor: isGeneratingPdf ? 'wait' : 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '0.5rem',
                             boxShadow: '0 0 10px rgba(0, 255, 0, 0.2)',
                             border: 'none',
                             fontFamily: 'var(--font-heading)',
-                            letterSpacing: '1px',
-                            transition: 'transform 0.2s ease, box-shadow 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.05)';
-                            e.currentTarget.style.boxShadow = '0 0 15px rgba(0, 255, 0, 0.4)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'none';
-                            e.currentTarget.style.boxShadow = '0 0 10px rgba(0, 255, 0, 0.2)';
+                            letterSpacing: '1px'
                         }}
                     >
-                        <Download size={16} /> DOWNLOAD TEAMS PDF
+                        <Download size={16} /> {isGeneratingPdf ? 'GENERATING TEAMS PDF...' : 'DOWNLOAD TEAMS PDF'}
                     </button>
+
+                    {selectedTeam && (
+                        <button 
+                            onClick={handleDownloadSlidesPdf}
+                            disabled={isGeneratingSlides}
+                            className="btn"
+                            style={{ 
+                                padding: '0.6rem 1.5rem', 
+                                background: isGeneratingSlides ? 'rgba(255, 215, 0, 0.5)' : 'var(--accent-gold)', 
+                                color: '#000', 
+                                fontWeight: 'bold',
+                                borderRadius: '8px',
+                                cursor: isGeneratingSlides ? 'wait' : 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                                boxShadow: '0 0 10px rgba(255, 215, 0, 0.2)',
+                                border: 'none',
+                                fontFamily: 'var(--font-heading)',
+                                letterSpacing: '1px'
+                            }}
+                        >
+                            <Download size={16} /> {isGeneratingSlides ? 'GENERATING SLIDES...' : `DOWNLOAD ${selectedTeam.team_name.toUpperCase()} SLIDES (BIG PHOTOS)`}
+                        </button>
+                    )}
                 </div>
             )}
 

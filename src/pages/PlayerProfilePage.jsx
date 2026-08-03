@@ -4,6 +4,8 @@ import { supabase } from '../services/supabase';
 import PageHeader from '../components/PageHeader';
 import { Loader } from '../components/Loader';
 import { getOptimizedImageUrl } from '../services/cloudinary';
+import { generateSinglePlayerCardPDF } from '../services/pdfGenerator';
+import { Download } from 'lucide-react';
 
 const PlayerProfilePage = () => {
   const { id } = useParams();
@@ -13,7 +15,21 @@ const PlayerProfilePage = () => {
 
   const [player, setPlayer] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1000);
+
+  const handleDownloadPdfCard = async () => {
+    if (!player) return;
+    setDownloadingPdf(true);
+    try {
+      await generateSinglePlayerCardPDF(player, null);
+    } catch (err) {
+      console.error("Failed to download player slide PDF:", err);
+      alert("Failed to download PDF.");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 1000);
@@ -61,9 +77,29 @@ const PlayerProfilePage = () => {
     <div className="flex-col min-h-screen" style={{ overflowX: 'hidden' }}>
       <div className="spotlight"></div>
 
-      <div style={{ position: 'absolute', top: isMobile ? '1rem' : '2rem', left: isMobile ? '1rem' : '2rem', zIndex: 10 }}>
+      <div style={{ position: 'absolute', top: isMobile ? '1rem' : '2rem', left: isMobile ? '1rem' : '2rem', zIndex: 10, display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <button onClick={() => navigate(fromPath)} className="btn btn-outline" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span>←</span> Back
+        </button>
+        <button 
+          onClick={handleDownloadPdfCard} 
+          disabled={downloadingPdf}
+          className="btn" 
+          style={{ 
+            padding: '0.4rem 0.9rem', 
+            fontSize: '0.85rem', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.4rem',
+            background: 'var(--accent-gold)',
+            color: '#000',
+            fontWeight: 'bold',
+            borderRadius: '6px',
+            border: 'none',
+            cursor: downloadingPdf ? 'wait' : 'pointer'
+          }}
+        >
+          <Download size={15} /> {downloadingPdf ? 'Generating PDF...' : 'Download PDF Slide'}
         </button>
       </div>
 
