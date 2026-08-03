@@ -222,13 +222,6 @@ const LiveAuctionProjectorPage = () => {
                         // Clear event history for this player if they are put back to active
                         processedEvents.current.delete(`${updatedPlayer.id}-sold`);
                         processedEvents.current.delete(`${updatedPlayer.id}-unsold`);
-
-                        // If player newly activated from pending/null
-                        if (!oldPlayer || oldPlayer.auction_status !== 'active') {
-                            const pName = updatedPlayer.players ? `${updatedPlayer.players.first_name || ''} ${updatedPlayer.players.last_name || ''}` : '';
-                            const pPhoto = updatedPlayer.players?.photo_url || null;
-                            triggerProjectorDrawAnimation(updatedPlayer.player_number, pName, pPhoto);
-                        }
                     }
 
                     if (
