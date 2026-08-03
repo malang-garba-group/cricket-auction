@@ -23,8 +23,46 @@ const LiveAuctionProjectorPage = () => {
     const [imageError, setImageError] = useState(false);
     const [soldImageError, setSoldImageError] = useState(false);
     const [unsoldImageError, setUnsoldImageError] = useState(false);
+    const [showDrawOverlay, setShowDrawOverlay] = useState(false);
+    const [drawPlayerName, setDrawPlayerName] = useState('');
+    const [drawPlayerPhoto, setDrawPlayerPhoto] = useState(null);
+    const [tickerNumber, setTickerNumber] = useState('?');
+    const [isTickerSpinning, setIsTickerSpinning] = useState(false);
+    const spinTimerRef = useRef(null);
+    const drawHideTimerRef = useRef(null);
     const processedEvents = useRef(new Set());
     const sponsorsLoadedRef = useRef(false);
+
+    const triggerProjectorDrawAnimation = (targetNum, name, photo) => {
+        if (targetNum == null) return;
+        setShowDrawOverlay(true);
+        setIsTickerSpinning(true);
+        setDrawPlayerName('');
+        setDrawPlayerPhoto(null);
+
+        if (spinTimerRef.current) clearInterval(spinTimerRef.current);
+        if (drawHideTimerRef.current) clearTimeout(drawHideTimerRef.current);
+
+        let count = 0;
+        const maxRolls = 22;
+        spinTimerRef.current = setInterval(() => {
+            count++;
+            const randomFakeNum = Math.floor(Math.random() * 99) + 1;
+            setTickerNumber(`#${randomFakeNum}`);
+
+            if (count >= maxRolls) {
+                clearInterval(spinTimerRef.current);
+                setTickerNumber(`#${targetNum}`);
+                setIsTickerSpinning(false);
+                setDrawPlayerName(name || '');
+                setDrawPlayerPhoto(photo || null);
+
+                drawHideTimerRef.current = setTimeout(() => {
+                    setShowDrawOverlay(false);
+                }, 3000);
+            }
+        }, 85);
+    };
 
     useEffect(() => {
         const handleResize = () => {
@@ -160,6 +198,13 @@ const LiveAuctionProjectorPage = () => {
         // 1. Robust Realtime Subscription
         const channel = supabase
             .channel('projector_sync_channel')
+            .on('broadcast', { event: 'random_number_draw' }, payload => {
+                console.log('Received random_number_draw broadcast on projector:', payload);
+                if (payload?.payload?.playerNumber != null) {
+                    const p = payload.payload;
+                    triggerProjectorDrawAnimation(p.playerNumber, p.playerName, p.photoUrl);
+                }
+            })
             .on('postgres_changes', {
                 event: '*',
                 schema: 'public',
@@ -177,6 +222,13 @@ const LiveAuctionProjectorPage = () => {
                         // Clear event history for this player if they are put back to active
                         processedEvents.current.delete(`${updatedPlayer.id}-sold`);
                         processedEvents.current.delete(`${updatedPlayer.id}-unsold`);
+
+                        // If player newly activated from pending/null
+                        if (!oldPlayer || oldPlayer.auction_status !== 'active') {
+                            const pName = updatedPlayer.players ? `${updatedPlayer.players.first_name || ''} ${updatedPlayer.players.last_name || ''}` : '';
+                            const pPhoto = updatedPlayer.players?.photo_url || null;
+                            triggerProjectorDrawAnimation(updatedPlayer.player_number, pName, pPhoto);
+                        }
                     }
 
                     if (
@@ -1890,6 +1942,114 @@ const LiveAuctionProjectorPage = () => {
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* RANDOM PLAYER DRAW / SPIN OVERLAY FOR LIVE PROJECTOR SCREEN */}
+            {showDrawOverlay && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    width: '100vw',
+                    height: '100vh',
+                    zIndex: 99999,
+                    background: 'radial-gradient(circle at center, rgba(15, 23, 42, 0.98), rgba(2, 6, 23, 0.99))',
+                    backdropFilter: 'blur(20px)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '2rem',
+                    color: '#fff',
+                    animation: 'fadeIn 0.3s ease-out'
+                }}>
+                    <div style={{
+                        fontSize: 'clamp(1.2rem, 2.5vw, 2.2rem)',
+                        fontWeight: 900,
+                        color: 'var(--accent-gold)',
+                        letterSpacing: '4px',
+                        textTransform: 'uppercase',
+                        marginBottom: '1.5rem',
+                        animation: 'pulseText 1s infinite alternate'
+                    }}>
+                        🎰 {activeAuction?.auction_name || 'MALANG CRICKET LEAGUE'} - RANDOM PLAYER DRAW
+                    </div>
+
+                    {/* Rolling Slot Machine Number Ticker */}
+                    <div style={{
+                        background: 'rgba(0,0,0,0.6)',
+                        border: '4px solid var(--accent-gold)',
+                        borderRadius: '30px',
+                        padding: '2.5rem 5rem',
+                        boxShadow: '0 0 80px rgba(255,215,0,0.5)',
+                        marginBottom: '2rem',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        minWidth: '400px'
+                    }}>
+                        <div style={{
+                            fontSize: 'clamp(6rem, 18vw, 14rem)',
+                            fontWeight: 900,
+                            color: isTickerSpinning ? 'var(--accent-gold)' : '#39ff14',
+                            fontFamily: 'var(--font-heading)',
+                            lineHeight: 1,
+                            textShadow: isTickerSpinning ? '0 0 40px rgba(255,215,0,0.8)' : '0 0 60px rgba(57,255,20,0.9)',
+                            animation: isTickerSpinning ? 'pulse 0.15s infinite' : 'bounceIn 0.5s ease-out'
+                        }}>
+                            {tickerNumber}
+                        </div>
+
+                        <div style={{
+                            fontSize: 'clamp(1.1rem, 2.2vw, 1.8rem)',
+                            color: isTickerSpinning ? 'var(--text-muted)' : 'var(--accent-gold)',
+                            fontWeight: 'bold',
+                            marginTop: '1rem',
+                            letterSpacing: '2px'
+                        }}>
+                            {isTickerSpinning ? 'GENERATING RANDOM PLAYER NUMBER...' : '🎉 DRAWN AUCTION PLAYER!'}
+                        </div>
+                    </div>
+
+                    {/* Drawn Player Profile Reveal */}
+                    {!isTickerSpinning && drawPlayerName && (
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '2rem',
+                            background: 'rgba(255,255,255,0.08)',
+                            border: '2px solid rgba(255,215,0,0.5)',
+                            padding: '1.5rem 3.5rem',
+                            borderRadius: '20px',
+                            animation: 'cardFadeInFromBelow 0.6s ease-out both',
+                            boxShadow: '0 20px 50px rgba(0,0,0,0.7)',
+                            maxWidth: '850px'
+                        }}>
+                            {drawPlayerPhoto && (
+                                <img
+                                    src={getOptimizedImageUrl(drawPlayerPhoto, 300)}
+                                    alt="Player"
+                                    style={{
+                                        width: '130px',
+                                        height: '130px',
+                                        borderRadius: '16px',
+                                        border: '3px solid var(--accent-gold)',
+                                        objectFit: 'cover',
+                                        boxShadow: '0 0 25px rgba(255,215,0,0.4)'
+                                    }}
+                                />
+                            )}
+                            <div>
+                                <div style={{ fontSize: '1rem', color: 'var(--accent-green)', fontWeight: 'bold', letterSpacing: '2px' }}>
+                                    STARTING AUCTION NOW:
+                                </div>
+                                <div style={{ fontSize: '2.8rem', fontWeight: 900, color: '#fff', textTransform: 'uppercase' }}>
+                                    {drawPlayerName}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
