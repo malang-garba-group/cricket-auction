@@ -147,6 +147,14 @@ export const getBase64ImageFromURL = async (url, options = {}) => {
   return createInitialsAvatar(fallbackInitials, width, isCircular);
 };
 
+export const generateSingleTeamPDF = async (activeAuction, team, squad) => {
+  if (!activeAuction || !team) {
+    alert("No team data available to generate PDF.");
+    return;
+  }
+  await generateAllTeamsPDF(activeAuction, [team], { [team.id]: squad });
+};
+
 /**
  * Generate PDF List View for All Teams with big square photos and 10-12 players per page
  */

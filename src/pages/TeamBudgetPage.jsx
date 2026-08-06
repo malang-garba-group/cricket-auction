@@ -4,6 +4,7 @@ import { supabase } from '../services/supabase';
 import PageHeader from '../components/PageHeader';
 import { Loader } from '../components/Loader';
 import { LayoutGrid, List } from 'lucide-react';
+import { generateSingleTeamPDF } from '../services/pdfGenerator';
 
 const getTeamInitials = (name) => {
   if (!name) return '';
@@ -125,6 +126,91 @@ const TeamBudgetPage = () => {
             ...prev,
             [teamId]: !prev[teamId]
         }));
+    };
+
+    const handleShareWhatsApp = (team) => {
+        const squad = squads[team.id] || [];
+        const moduleOwners = teamOwnersMap[team.id] || [];
+        const spent = squad.reduce((acc, p) => acc + (p.sold_price || 0), 0);
+        const maxBudget = activeAuction?.max_budget || 0;
+        const remaining = maxBudget - spent;
+        const maxPlayers = activeAuction?.max_players || 11;
+
+        const isCaptOrVc = (p) => p.is_captain || p.id == team.captain_id || p.id == team.vice_captain_id;
+        const captains = squad.filter(p => isCaptOrVc(p) && !p.is_icon);
+        const icons = squad.filter(p => p.is_icon && !isCaptOrVc(p));
+        const purchased = squad.filter(p => !p.is_icon && !isCaptOrVc(p) && (p.sold_price > 0 || p.auction_status === 'sold'));
+
+        // Legacy player owners
+        const legacyOwners = allPlayers.filter(p => isTeamOwner(p, team.id));
+
+        let msg = `🏏 *${team.team_name.toUpperCase()} - SQUAD & CONTACTS*\n`;
+        if (activeAuction?.auction_name) {
+            msg += `🏆 Event: *${activeAuction.auction_name}*\n`;
+        }
+        msg += `💰 Spent: ₹${spent.toLocaleString('en-IN')} | Remaining: ₹${remaining.toLocaleString('en-IN')}\n`;
+        msg += `👥 Squad Size: ${squad.length} / ${maxPlayers}\n\n`;
+
+        // 1. Owners
+        msg += `👑 *OWNERS & CONTACTS*:\n`;
+        if (moduleOwners.length > 0) {
+            moduleOwners.forEach(o => {
+                msg += `• ${o.owner_name}${o.mobile_number ? ` - 📞 ${o.mobile_number}` : ''}\n`;
+            });
+        } else if (legacyOwners.length > 0) {
+            legacyOwners.forEach(p => {
+                const name = `${p.players?.first_name || ''} ${p.players?.last_name || ''}`.trim();
+                const mob = p.players?.mobile;
+                msg += `• ${name}${mob ? ` - 📞 ${mob}` : ''}\n`;
+            });
+        } else {
+            msg += `• None\n`;
+        }
+        msg += `\n`;
+
+        // 2. Captain / VC
+        if (captains.length > 0) {
+            msg += `👑 *CAPTAIN / VC*:\n`;
+            captains.forEach(p => {
+                const name = `${p.players?.first_name || ''} ${p.players?.last_name || ''}`.trim();
+                const mob = p.players?.mobile;
+                const role = p.players?.player_role || 'Captain';
+                msg += `• ${name}${mob ? ` - 📞 ${mob}` : ''} (${role})\n`;
+            });
+            msg += `\n`;
+        }
+
+        // 3. Icons
+        if (icons.length > 0) {
+            msg += `⭐ *ICONS*:\n`;
+            icons.forEach(p => {
+                const name = `${p.players?.first_name || ''} ${p.players?.last_name || ''}`.trim();
+                const mob = p.players?.mobile;
+                const role = p.players?.player_role || 'Icon';
+                msg += `• ${name}${mob ? ` - 📞 ${mob}` : ''} (${role})\n`;
+            });
+            msg += `\n`;
+        }
+
+        // 4. Purchased Squad
+        if (purchased.length > 0) {
+            msg += `🏏 *PURCHASED SQUAD (${purchased.length})*:\n`;
+            purchased.forEach((p, idx) => {
+                const name = `${p.players?.first_name || ''} ${p.players?.last_name || ''}`.trim();
+                const mob = p.players?.mobile;
+                const role = p.players?.player_role || 'Player';
+                const price = p.sold_price ? ` - ₹${p.sold_price.toLocaleString('en-IN')}` : '';
+                msg += `${idx + 1}. ${name}${mob ? ` - 📞 ${mob}` : ''} (${role})${price}\n`;
+            });
+        }
+
+        const encoded = encodeURIComponent(msg);
+        window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
+    };
+
+    const handleDownloadPDF = async (team) => {
+        const squad = squads[team.id] || [];
+        await generateSingleTeamPDF(activeAuction, team, squad);
     };
 
     const isMobile = window.innerWidth < 768;
@@ -330,14 +416,16 @@ const TeamBudgetPage = () => {
                                                 </span>
                                             </div>
 
-                                            {/* Toggle button */}
-                                            <button 
-                                                onClick={() => toggleRoster(team.id)} 
-                                                className="btn btn-outline" 
-                                                style={{ marginTop: 'auto', width: '100%', fontSize: '0.8rem', padding: '0.4rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.25rem' }}
-                                            >
-                                                {isExpanded ? 'Hide Roster ▲' : 'View Roster ▼'}
-                                            </button>
+                                            {/* Action Buttons */}
+                                            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                <button 
+                                                    onClick={() => toggleRoster(team.id)} 
+                                                    className="btn btn-outline" 
+                                                    style={{ width: '100%', fontSize: '0.8rem', padding: '0.4rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.25rem' }}
+                                                >
+                                                    {isExpanded ? 'Hide Roster ▲' : 'View Roster ▼'}
+                                                </button>
+                                            </div>
 
                                             {/* Collapsible Roster details */}
                                             {isExpanded && (
@@ -471,7 +559,7 @@ const TeamBudgetPage = () => {
                                                 </div>
 
                                                 {/* Action Button */}
-                                                <div>
+                                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                                     <button 
                                                         onClick={() => toggleRoster(team.id)} 
                                                         className="btn btn-outline" 
