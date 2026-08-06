@@ -147,22 +147,24 @@ export const getBase64ImageFromURL = async (url, options = {}) => {
   return createInitialsAvatar(fallbackInitials, width, isCircular);
 };
 
-export const generateSingleTeamPDF = async (activeAuction, team, squad) => {
+export const generateSingleTeamPDF = async (activeAuction, team, squad, options = {}) => {
   if (!activeAuction || !team) {
     alert("No team data available to generate PDF.");
-    return;
+    return null;
   }
-  await generateAllTeamsPDF(activeAuction, [team], { [team.id]: squad });
+  const customFilename = `${team.team_name.replace(/ /g, '_')}_Squad.pdf`;
+  return await generateAllTeamsPDF(activeAuction, [team], { [team.id]: squad }, { customFilename, ...options });
 };
 
 /**
  * Generate PDF List View for All Teams with big square photos and 10-12 players per page
  */
-export const generateAllTeamsPDF = async (activeAuction, teams, squads) => {
+export const generateAllTeamsPDF = async (activeAuction, teams, squads, options = {}) => {
   if (!activeAuction || !teams || teams.length === 0) {
     alert("No data available to generate PDF.");
-    return;
+    return null;
   }
+  const { saveFile = true, customFilename } = options;
 
   const doc = new jsPDF();
   const maxBudget = activeAuction?.max_budget || 0;
@@ -339,7 +341,11 @@ export const generateAllTeamsPDF = async (activeAuction, teams, squads) => {
     doc.text(`Page ${pageCount} of ${doc.internal.getNumberOfPages()}  |  Generated on ${new Date().toLocaleDateString()}`, 14, 285);
   }
 
-  doc.save(`All_Teams_Roster_${activeAuction?.auction_name?.replace(/ /g, '_') || 'List'}.pdf`);
+  if (saveFile) {
+    const filename = customFilename || `All_Teams_Roster_${activeAuction?.auction_name?.replace(/ /g, '_') || 'List'}.pdf`;
+    doc.save(filename);
+  }
+  return doc;
 };
 
 /**

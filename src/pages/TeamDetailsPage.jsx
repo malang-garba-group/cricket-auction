@@ -150,6 +150,111 @@ const TeamDetailsPage = () => {
         await generateSingleTeamPDF(activeAuction, team, squad);
     };
 
+    const handleSendPdfWhatsApp = async (team) => {
+        if (!team) return;
+        const squad = squads[team.id] || [];
+        const moduleOwners = teamOwnersMap[team.id] || [];
+        const spent = squad.reduce((acc, p) => acc + (p.sold_price || 0), 0);
+        const maxBudget = activeAuction?.max_budget || 0;
+        const remaining = maxBudget - spent;
+        const maxPlayers = activeAuction?.max_players || 11;
+
+        const isCaptOrVc = (p) => p.is_captain || p.id == team.captain_id || p.id == team.vice_captain_id;
+        const captains = squad.filter(p => isCaptOrVc(p) && !p.is_icon);
+        const icons = squad.filter(p => p.is_icon && !isCaptOrVc(p));
+        const purchased = squad.filter(p => !p.is_icon && !isCaptOrVc(p) && (p.sold_price > 0 || p.auction_status === 'sold'));
+        const legacyOwners = allPlayers.filter(p => isTeamOwner(p, team.id));
+
+        let msg = `🏏 *${team.team_name.toUpperCase()} - OFFICIAL SQUAD PDF & ROSTER*\n`;
+        if (activeAuction?.auction_name) {
+            msg += `🏆 Event: *${activeAuction.auction_name}*\n`;
+        }
+        msg += `💰 Spent: ₹${spent.toLocaleString('en-IN')} | Remaining: ₹${remaining.toLocaleString('en-IN')}\n`;
+        msg += `👥 Squad Size: ${squad.length} / ${maxPlayers}\n\n`;
+
+        // 1. Owners
+        msg += `👑 *OWNERS & CONTACTS*:\n`;
+        if (moduleOwners.length > 0) {
+            moduleOwners.forEach(o => {
+                msg += `• ${o.owner_name}${o.mobile_number ? ` - 📞 ${o.mobile_number}` : ''}\n`;
+            });
+        } else if (legacyOwners.length > 0) {
+            legacyOwners.forEach(p => {
+                const name = `${p.players?.first_name || ''} ${p.players?.last_name || ''}`.trim();
+                const mob = p.players?.mobile;
+                msg += `• ${name}${mob ? ` - 📞 ${mob}` : ''}\n`;
+            });
+        } else {
+            msg += `• None\n`;
+        }
+        msg += `\n`;
+
+        // 2. Captain / VC
+        if (captains.length > 0) {
+            msg += `👑 *CAPTAIN / VC*:\n`;
+            captains.forEach(p => {
+                const name = `${p.players?.first_name || ''} ${p.players?.last_name || ''}`.trim();
+                const mob = p.players?.mobile;
+                const role = p.players?.player_role || 'Captain';
+                msg += `• ${name}${mob ? ` - 📞 ${mob}` : ''} (${role})\n`;
+            });
+            msg += `\n`;
+        }
+
+        // 3. Icons
+        if (icons.length > 0) {
+            msg += `⭐ *ICONS*:\n`;
+            icons.forEach(p => {
+                const name = `${p.players?.first_name || ''} ${p.players?.last_name || ''}`.trim();
+                const mob = p.players?.mobile;
+                const role = p.players?.player_role || 'Icon';
+                msg += `• ${name}${mob ? ` - 📞 ${mob}` : ''} (${role})\n`;
+            });
+            msg += `\n`;
+        }
+
+        // 4. Purchased Squad
+        if (purchased.length > 0) {
+            msg += `🏏 *PURCHASED SQUAD (${purchased.length})*:\n`;
+            purchased.forEach((p, idx) => {
+                const name = `${p.players?.first_name || ''} ${p.players?.last_name || ''}`.trim();
+                const mob = p.players?.mobile;
+                const role = p.players?.player_role || 'Player';
+                const price = p.sold_price ? ` - ₹${p.sold_price.toLocaleString('en-IN')}` : '';
+                msg += `${idx + 1}. ${name}${mob ? ` - 📞 ${mob}` : ''} (${role})${price}\n`;
+            });
+        }
+
+        try {
+            // Generate PDF document in memory
+            const doc = await generateSingleTeamPDF(activeAuction, team, squad, { saveFile: false, returnDoc: true });
+            if (doc) {
+                const pdfBlob = doc.output('blob');
+                const filename = `${team.team_name.replace(/ /g, '_')}_Squad_Roster.pdf`;
+                const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
+
+                // Try Web Share API (mobile & supported browsers)
+                if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+                    await navigator.share({
+                        title: `${team.team_name} Squad Roster PDF`,
+                        text: msg,
+                        files: [pdfFile]
+                    });
+                    return;
+                }
+                
+                // Fallback for desktop: download PDF file + open WhatsApp Web pre-filled with text & note
+                doc.save(filename);
+                msg += `\n📎 *Note: The official team PDF roster has been downloaded to your device as "${filename}". Attach it directly into this WhatsApp chat!*`;
+            }
+        } catch (err) {
+            console.warn("Share API error fallback:", err);
+        }
+
+        const encoded = encodeURIComponent(msg);
+        window.open(`https://api.whatsapp.com/send?text=${encoded}`, '_blank');
+    };
+
     useEffect(() => {
         if (!isAuthenticated) {
             setLoading(false);
@@ -479,22 +584,30 @@ const TeamDetailsPage = () => {
 
                                     {/* Action Buttons */}
                                     <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.35rem' }}>
                                             <button
                                                 onClick={() => handleShareWhatsApp(team)}
                                                 className="btn"
-                                                style={{ fontSize: '0.75rem', padding: '0.4rem 0.5rem', background: '#25D366', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', fontWeight: 'bold' }}
-                                                title="Share Team Squad & Contact Roster on WhatsApp"
+                                                style={{ fontSize: '0.7rem', padding: '0.4rem 0.3rem', background: '#25D366', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.2rem', fontWeight: 'bold' }}
+                                                title="Share Text Roster on WhatsApp"
                                             >
-                                                💬 WhatsApp
+                                                💬 Text
+                                            </button>
+                                            <button
+                                                onClick={() => handleSendPdfWhatsApp(team)}
+                                                className="btn"
+                                                style={{ fontSize: '0.7rem', padding: '0.4rem 0.3rem', background: '#128C7E', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.2rem', fontWeight: 'bold' }}
+                                                title="Send PDF Document on WhatsApp"
+                                            >
+                                                📲 PDF
                                             </button>
                                             <button
                                                 onClick={() => handleDownloadSingleTeamPdf(team)}
                                                 className="btn btn-outline"
-                                                style={{ fontSize: '0.75rem', padding: '0.4rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}
-                                                title="Download Team PDF Roster"
+                                                style={{ fontSize: '0.7rem', padding: '0.4rem 0.3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.2rem' }}
+                                                title="Download Team PDF File"
                                             >
-                                                📄 Team PDF
+                                                📄 Save
                                             </button>
                                         </div>
 
@@ -655,22 +768,30 @@ const TeamDetailsPage = () => {
                                         </div>
 
                                         {/* Action Buttons */}
-                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                             <button
                                                 onClick={() => handleShareWhatsApp(team)}
                                                 className="btn"
-                                                style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem', background: '#25D366', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: '0.3rem', fontWeight: 'bold' }}
-                                                title="Share Team Squad & Contact Roster on WhatsApp"
+                                                style={{ fontSize: '0.75rem', padding: '0.4rem 0.6rem', background: '#25D366', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 'bold' }}
+                                                title="Share Text Roster on WhatsApp"
                                             >
-                                                💬 WhatsApp
+                                                💬 Text WhatsApp
+                                            </button>
+                                            <button
+                                                onClick={() => handleSendPdfWhatsApp(team)}
+                                                className="btn"
+                                                style={{ fontSize: '0.75rem', padding: '0.4rem 0.6rem', background: '#128C7E', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 'bold' }}
+                                                title="Send PDF Document on WhatsApp"
+                                            >
+                                                📲 Send PDF
                                             </button>
                                             <button
                                                 onClick={() => handleDownloadSingleTeamPdf(team)}
                                                 className="btn btn-outline"
-                                                style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                                                title="Download Team PDF Roster"
+                                                style={{ fontSize: '0.75rem', padding: '0.4rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                                                title="Download Team PDF File"
                                             >
-                                                📄 Team PDF
+                                                📄 Save PDF
                                             </button>
                                             <button 
                                                 onClick={() => toggleRoster(team.id)} 
@@ -838,48 +959,70 @@ const TeamDetailsPage = () => {
                                                 </div>
                                             </div>
 
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.4rem' }}>
                                                 <button
                                                     onClick={() => handleShareWhatsApp(selectedTeam)}
                                                     className="btn"
                                                     style={{
-                                                        padding: '0.6rem 0.8rem',
+                                                        padding: '0.6rem 0.4rem',
                                                         background: '#25D366',
                                                         color: '#fff',
                                                         border: 'none',
                                                         borderRadius: '8px',
                                                         fontWeight: 'bold',
-                                                        fontSize: '0.8rem',
+                                                        fontSize: '0.75rem',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justify: 'center',
-                                                        gap: '0.3rem',
+                                                        gap: '0.25rem',
                                                         boxShadow: '0 4px 12px rgba(37,211,102,0.3)',
                                                         cursor: 'pointer'
                                                     }}
-                                                    title="Share Squad & Player Contact Numbers on WhatsApp"
+                                                    title="Share Text Roster on WhatsApp"
                                                 >
-                                                    💬 WhatsApp
+                                                    💬 Text Roster
+                                                </button>
+                                                <button
+                                                    onClick={() => handleSendPdfWhatsApp(selectedTeam)}
+                                                    className="btn"
+                                                    style={{
+                                                        padding: '0.6rem 0.4rem',
+                                                        background: '#128C7E',
+                                                        color: '#fff',
+                                                        border: 'none',
+                                                        borderRadius: '8px',
+                                                        fontWeight: 'bold',
+                                                        fontSize: '0.75rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justify: 'center',
+                                                        gap: '0.25rem',
+                                                        boxShadow: '0 4px 12px rgba(18,140,126,0.3)',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                    title="Send PDF Document on WhatsApp"
+                                                >
+                                                    📲 Send PDF
                                                 </button>
                                                 <button
                                                     onClick={() => handleDownloadSingleTeamPdf(selectedTeam)}
                                                     className="btn btn-outline"
                                                     style={{
-                                                        padding: '0.6rem 0.8rem',
+                                                        padding: '0.6rem 0.4rem',
                                                         borderColor: 'var(--accent-gold)',
                                                         color: 'var(--accent-gold)',
                                                         borderRadius: '8px',
                                                         fontWeight: 'bold',
-                                                        fontSize: '0.8rem',
+                                                        fontSize: '0.75rem',
                                                         display: 'flex',
                                                         alignItems: 'center',
                                                         justify: 'center',
-                                                        gap: '0.3rem',
+                                                        gap: '0.25rem',
                                                         cursor: 'pointer'
                                                     }}
                                                     title="Download PDF Roster for this Team"
                                                 >
-                                                    📄 Team PDF
+                                                    📄 Save PDF
                                                 </button>
                                             </div>
                                         </div>
