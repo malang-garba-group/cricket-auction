@@ -28,6 +28,7 @@ const AuctionTeamsPage = () => {
   const [teams, setTeams] = useState([]);
   const [iconPlayers, setIconPlayers] = useState([]);
   const [ownerPlayers, setOwnerPlayers] = useState([]);
+  const [moduleTeamOwnersMap, setModuleTeamOwnersMap] = useState({});
   const [allAuctionPlayers, setAllAuctionPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -112,6 +113,19 @@ const AuctionTeamsPage = () => {
         }));
         setIconPlayers(mappedIcons);
         setOwnerPlayers(mappedOwners);
+
+        // Fetch team_owners joined with owners from dedicated owner module
+        const { data: toData } = await supabase
+          .from('team_owners')
+          .select('*, owners(*)')
+          .eq('auction_id', auctionData.id);
+
+        const moduleGrouped = {};
+        (toData || []).forEach(to => {
+          if (!moduleGrouped[to.team_id]) moduleGrouped[to.team_id] = [];
+          if (to.owners) moduleGrouped[to.team_id].push(to.owners);
+        });
+        setModuleTeamOwnersMap(moduleGrouped);
       }
     } catch (err) {
       console.error(err);
@@ -356,6 +370,25 @@ const AuctionTeamsPage = () => {
     }
   };
 
+  const removeModuleOwner = async (teamId, ownerId) => {
+    try {
+      setActionLoading(true);
+      const { error } = await supabase
+        .from('team_owners')
+        .delete()
+        .eq('team_id', teamId)
+        .eq('owner_id', ownerId);
+
+      if (error) throw error;
+      await fetchData();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to remove owner.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const assignIconPlayer = async (auctionPlayerId, teamId) => {
     try {
       setActionLoading(true);
@@ -499,9 +532,27 @@ const AuctionTeamsPage = () => {
                     const maxIcons = activeAuction?.number_of_icon !== null && activeAuction?.number_of_icon !== undefined ? parseInt(activeAuction.number_of_icon) : 999;
                     const canAddMoreIcons = teamIcons.length < maxIcons;
 
-                    const teamOwners = ownersByTeam[team.id] || [];
+                    const modernTeamOwners = moduleTeamOwnersMap[team.id] || [];
+                    const legacyTeamOwners = ownersByTeam[team.id] || [];
+                    const combinedTeamOwners = modernTeamOwners.length > 0
+                        ? modernTeamOwners.map(mo => ({
+                            id: mo.id,
+                            owner_name: mo.owner_name,
+                            photo_url: mo.photo_url,
+                            mobile_number: mo.mobile_number,
+                            is_module: true
+                        }))
+                        : legacyTeamOwners.map(p => ({
+                            id: p.auction_player_id,
+                            owner_name: `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Owner',
+                            photo_url: p.photo_url,
+                            mobile_number: p.mobile,
+                            is_module: false,
+                            auction_player_id: p.auction_player_id
+                        }));
+
                     const maxOwners = activeAuction?.number_of_owner !== null && activeAuction?.number_of_owner !== undefined ? parseInt(activeAuction.number_of_owner) : 999;
-                    const canAddMoreOwners = teamOwners.length < maxOwners;
+                    const canAddMoreOwners = combinedTeamOwners.length < maxOwners;
                     
                     return (
                       <div key={team.id} style={{ background: 'rgba(0,0,0,0.3)', border: '1px solid var(--glass-border)', borderRadius: '8px', overflow: 'hidden' }}>
@@ -518,7 +569,7 @@ const AuctionTeamsPage = () => {
                             <div style={{ flex: 1 }}>
                                 <h3 style={{ margin: '0 0 0.2rem 0', color: 'var(--text-main)' }}>{team.team_name}</h3>
                                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                    Icons: {teamIcons.length}/{maxIcons > 100 ? '∞' : maxIcons} | Owners: {teamOwners.length}/{maxOwners > 100 ? '∞' : maxOwners}
+                                    Icons: {teamIcons.length}/{maxIcons > 100 ? '∞' : maxIcons} | Owners: {combinedTeamOwners.length}/{maxOwners > 100 ? '∞' : maxOwners}
                                 </div>
                             </div>
                             <div>
@@ -586,32 +637,46 @@ const AuctionTeamsPage = () => {
 
                         {/* Owner Players Section */}
                         <div style={{ padding: '1.5rem', borderBottom: '1px solid var(--glass-border)' }}>
-                            <h4 style={{ margin: '0 0 1rem 0', color: 'var(--accent-green)', fontSize: '0.9rem', textTransform: 'uppercase' }}>Assigned Owner Players</h4>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                <h4 style={{ margin: 0, color: 'var(--accent-green)', fontSize: '0.9rem', textTransform: 'uppercase' }}>
+                                    Assigned Team Owners ({combinedTeamOwners.length})
+                                </h4>
+                                <Link to={`/admin-owners?code=${auctionCode}`} style={{ fontSize: '0.75rem', padding: '0.25rem 0.6rem', background: 'rgba(255,215,0,0.15)', color: 'var(--accent-gold)', border: '1px solid var(--accent-gold)', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold' }}>
+                                    + Manage Owners
+                                </Link>
+                            </div>
                             
-                            {teamOwners.length === 0 ? (
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: '1rem' }}>No owner players assigned yet.</p>
+                            {combinedTeamOwners.length === 0 ? (
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic', marginBottom: '1rem' }}>No team owners assigned yet.</p>
                             ) : (
-                                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1.5rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                    {teamOwners.map(p => (
-                                        <li key={p.auction_player_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(57,255,20,0.05)', padding: '0.5rem 0.8rem', borderRadius: '4px', border: '1px solid rgba(57,255,20,0.2)' }}>
+                                <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 1rem 0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                    {combinedTeamOwners.map(o => (
+                                        <li key={o.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(57,255,20,0.05)', padding: '0.5rem 0.8rem', borderRadius: '4px', border: '1px solid rgba(57,255,20,0.2)' }}>
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                                                {p.photo_url ? (
-                                                    <img src={getOptimizedImageUrl(p.photo_url, 100)} alt="Player" style={{ width: 30, height: 30, objectFit: 'cover', borderRadius: '50%' }} />
-                                                ) : (
-                                                    <div style={{ width: 30, height: 30, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold', color: '#fff' }}>
-                                                        {getPlayerInitials(p)}
-                                                    </div>
-                                                )}
-                                                <span style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>
-                                                    {p.first_name} {p.last_name}
-                                                    {team.captain_id == p.auction_player_id && <span style={{ marginLeft: '0.4rem', color: 'var(--accent-gold)', fontSize: '0.75rem' }}>👑 (C)</span>}
-                                                    {team.vice_captain_id == p.auction_player_id && <span style={{ marginLeft: '0.4rem', color: 'var(--accent-green)', fontSize: '0.75rem' }}>⭐ (VC)</span>}
-                                                </span>
+                                                {o.photo_url ? (
+                                                    <img
+                                                      src={getOptimizedImageUrl(o.photo_url, 100)}
+                                                      alt="Owner"
+                                                      onError={(e) => { e.target.style.display = 'none'; e.target.nextElementSibling.style.display = 'flex'; }}
+                                                      style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: '50%', border: '1px solid var(--accent-green)' }}
+                                                    />
+                                                ) : null}
+                                                <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'rgba(57,255,20,0.2)', display: o.photo_url ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--accent-green)', border: '1px solid var(--accent-green)' }}>
+                                                    {(o.owner_name || 'OW').slice(0, 2).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#fff' }}>
+                                                        {o.owner_name}
+                                                    </span>
+                                                    {o.mobile_number && (
+                                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>📞 {o.mobile_number}</div>
+                                                    )}
+                                                </div>
                                             </div>
                                             <button 
-                                                onClick={() => assignOwnerPlayer(p.auction_player_id, null)} 
+                                                onClick={() => o.is_module ? removeModuleOwner(team.id, o.id) : assignOwnerPlayer(o.auction_player_id, null)} 
                                                 className="btn btn-outline" 
-                                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem', borderColor: '#10b981', color: '#10b981' }}
+                                                style={{ padding: '0.2rem 0.5rem', fontSize: '0.7rem', borderColor: '#ef4444', color: '#ef4444' }}
                                                 disabled={actionLoading}
                                             >
                                                 Remove

@@ -73,8 +73,9 @@ export const deleteFromCloudinary = async (fileUrl) => {
 };
 
 // Returns optimized version of Cloudinary URL using on-the-fly transformations
-export const getOptimizedImageUrl = (url, width = 600) => {
+export const getOptimizedImageUrl = (url, widthParam = 600) => {
   if (!url) return url;
+  if (typeof url !== 'string') return url;
   if (!url.includes('res.cloudinary.com')) return url; // Not a Cloudinary URL
   
   const uploadMarker = '/upload/';
@@ -89,5 +90,9 @@ export const getOptimizedImageUrl = (url, width = 600) => {
     return url;
   }
   
+  const width = (typeof widthParam === 'object' && widthParam !== null)
+    ? (widthParam.width || 600)
+    : (widthParam || 600);
+
   return `${before}q_auto,f_auto,w_${width}/${after}`;
 };

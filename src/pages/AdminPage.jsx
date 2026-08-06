@@ -106,6 +106,12 @@ const AdminPage = () => {
             <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem', lineHeight: 1.5 }}>Manage teams and assign Icon players.</p>
           </Link>
 
+          <Link to={`/admin-owners${codeParam}`} className="glass-panel render-card" style={{ padding: '3rem 2rem', textAlign: 'center', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', border: '1px solid var(--accent-gold)' }}>
+            <div style={{ fontSize: '3.5rem' }}>👑</div>
+            <h3 style={{ color: 'var(--accent-gold)', margin: 0, fontSize: '1.5rem' }}>Manage Owners</h3>
+            <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem', lineHeight: 1.5 }}>Create owners, pre-fill player data, & assign multi-team owners.</p>
+          </Link>
+
           <Link to={`/admin-players${codeParam}`} className="glass-panel render-card" style={{ padding: '3rem 2rem', textAlign: 'center', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
             <div style={{ fontSize: '3.5rem' }}>👥</div>
             <h3 style={{ color: 'var(--accent-green)', margin: 0, fontSize: '1.5rem' }}>Player Approvals</h3>

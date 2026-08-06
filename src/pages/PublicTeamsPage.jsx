@@ -33,6 +33,7 @@ const PublicTeamsPage = () => {
     const [activeAuction, setActiveAuction] = useState(null);
     const [teams, setTeams] = useState([]);
     const [squads, setSquads] = useState({});
+    const [teamOwnersMap, setTeamOwnersMap] = useState({});
     const [selectedTeamId, setSelectedTeamId] = useState(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
 
@@ -118,6 +119,19 @@ const PublicTeamsPage = () => {
                 .eq('auction_id', currentAuctionId)
                 .not('team_id', 'is', null);
 
+            // Fetch team_owners with owners details
+            const { data: toData } = await supabase
+                .from('team_owners')
+                .select('*, owners(*)')
+                .eq('auction_id', currentAuctionId);
+
+            const teamOwnersGrouped = {};
+            (toData || []).forEach(to => {
+                if (!teamOwnersGrouped[to.team_id]) teamOwnersGrouped[to.team_id] = [];
+                if (to.owners) teamOwnersGrouped[to.team_id].push(to.owners);
+            });
+            setTeamOwnersMap(teamOwnersGrouped);
+
             const grouped = {};
             (tData || []).forEach(team => {
                 grouped[team.id] = (apData || []).filter(p => p.team_id === team.id);
@@ -162,7 +176,19 @@ const PublicTeamsPage = () => {
 
     const selectedTeam = teams.find(t => t.id === selectedTeamId);
     const squad = selectedTeamId ? (squads[selectedTeamId] || []) : [];
-    const owners = squad.filter(p => p.is_owner);
+    
+    // Modern team owners from team_owners table
+    const modernOwners = selectedTeamId ? (teamOwnersMap[selectedTeamId] || []) : [];
+    // Legacy player owners for fallback
+    const legacyOwners = squad.filter(p => p.is_owner);
+    // Combine modern & legacy owners safely
+    const combinedOwners = modernOwners.length > 0 ? modernOwners : legacyOwners.map(p => ({
+        id: p.id,
+        player_id: p.players?.id,
+        owner_name: `${p.players?.first_name || ''} ${p.players?.last_name || ''}`.trim() || 'Owner',
+        photo_url: p.players?.photo_url,
+        mobile_number: p.players?.mobile
+    }));
     const icons = squad.filter(p => p.is_icon);
     const auctioned = squad.filter(p => !p.is_icon && !p.is_owner);
     const spent = squad.reduce((acc, p) => acc + (p.sold_price || 0), 0);
@@ -488,27 +514,28 @@ const PublicTeamsPage = () => {
                                                     borderBottom: '2px solid rgba(57,255,20,0.2)', 
                                                     paddingBottom: '0.6rem' 
                                                 }}>
-                                                    OWNER PLAYERS <span style={{fontSize: '0.9rem'}}>({owners.length})</span>
+                                                    TEAM OWNERS <span style={{fontSize: '0.9rem'}}>({combinedOwners.length})</span>
                                                 </h4>
                                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '1rem' }}>
-                                                    {owners.length === 0 ? <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.9rem' }}>No owner players assigned.</p> : owners.map(p => (
-                                                        <Link key={p.id} to={`/player/${p.players.id}`} state={{ from: '/teams' }} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(57,255,20,0.08)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(57,255,20,0.15)', textDecoration: 'none' }}>
-                                                            {p.players.photo_url ? (
-                                                                <img src={getOptimizedImageUrl(p.players.photo_url, 150)} alt="X" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-green)' }} />
+                                                    {combinedOwners.length === 0 ? <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.9rem' }}>No team owners assigned.</p> : combinedOwners.map(owner => (
+                                                        <div key={owner.id} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(57,255,20,0.08)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(57,255,20,0.15)' }}>
+                                                            {owner.photo_url ? (
+                                                                <img src={getOptimizedImageUrl(owner.photo_url, 150)} alt="Owner" style={{ width: 60, height: 60, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--accent-green)' }} />
                                                             ) : (
                                                                 <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'linear-gradient(135deg, rgba(57,255,20,0.2), rgba(0,0,0,0.4))', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--accent-green)', border: '2px solid var(--accent-green)' }}>
-                                                                    {getPlayerInitials(p.players)}
+                                                                    {(owner.owner_name || 'OW').slice(0, 2).toUpperCase()}
                                                                 </div>
                                                             )}
                                                             <div>
                                                                 <div style={{ fontWeight: '800', fontSize: '1rem', color: '#fff', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                                                    <span>{p.players.first_name} {p.players.last_name}</span>
-                                                                    {selectedTeam.captain_id == p.id && <span style={{ background: 'var(--accent-gold)', color: '#000', padding: '0.1rem 0.3rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold' }}>👑 (C)</span>}
-                                                                    {selectedTeam.vice_captain_id == p.id && <span style={{ background: 'var(--accent-green)', color: '#000', padding: '0.1rem 0.3rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold' }}>⭐ (VC)</span>}
+                                                                    <span>{owner.owner_name}</span>
+                                                                    <span style={{ background: 'var(--accent-green)', color: '#000', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 'bold' }}>OWNER</span>
                                                                 </div>
-                                                                <div style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontWeight: 'bold' }}>{p.players.player_role.toUpperCase()}</div>
+                                                                {owner.mobile_number && (
+                                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>📞 {owner.mobile_number}</div>
+                                                                )}
                                                             </div>
-                                                        </Link>
+                                                        </div>
                                                     ))}
                                                 </div>
                                             </div>

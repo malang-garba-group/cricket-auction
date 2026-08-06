@@ -28,6 +28,7 @@ const TeamBudgetPage = () => {
     const [activeAuction, setActiveAuction] = useState(null);
     const [teams, setTeams] = useState([]);
     const [allPlayers, setAllPlayers] = useState([]);
+    const [teamOwnersMap, setTeamOwnersMap] = useState({});
     const [squads, setSquads] = useState({});
     const [loading, setLoading] = useState(true);
     const [expandedTeams, setExpandedTeams] = useState({});
@@ -88,6 +89,19 @@ const TeamBudgetPage = () => {
 
                 if (apError) throw apError;
                 setAllPlayers(apData || []);
+
+                // Fetch team_owners joined with owners from dedicated owner module
+                const { data: toData } = await supabase
+                    .from('team_owners')
+                    .select('*, owners(*)')
+                    .eq('auction_id', auctionData.id);
+
+                const moduleOwnersGrouped = {};
+                (toData || []).forEach(to => {
+                    if (!moduleOwnersGrouped[to.team_id]) moduleOwnersGrouped[to.team_id] = [];
+                    if (to.owners) moduleOwnersGrouped[to.team_id].push(to.owners);
+                });
+                setTeamOwnersMap(moduleOwnersGrouped);
 
                 const grouped = {};
                 (tData || []).forEach(team => {
@@ -229,12 +243,29 @@ const TeamBudgetPage = () => {
                                     const maxBudget = activeAuction.max_budget || 0;
                                     const remaining = maxBudget - spent;
                                     const percentSpent = maxBudget > 0 ? Math.min((spent / maxBudget) * 100, 100) : 0;
-                                    const owners = allPlayers.filter(p => isTeamOwner(p, team.id));
+                                    
+                                    const modernTeamOwners = (teamOwnersMap[team.id] || []).map(mo => ({
+                                        id: `mod_${mo.id}`,
+                                        name: mo.owner_name,
+                                        role: 'Owner',
+                                        bought_by: null
+                                    }));
+                                    const legacyTeamOwners = allPlayers.filter(p => isTeamOwner(p, team.id)).map(p => {
+                                        const playingTeam = p.team_id && p.team_id !== team.id ? teams.find(t => t.id === p.team_id) : null;
+                                        return {
+                                            id: p.id,
+                                            name: `${p.players?.first_name || ''} ${p.players?.last_name || ''}`.trim() || 'Owner',
+                                            role: p.players?.player_role || 'Owner',
+                                            bought_by: playingTeam ? playingTeam.team_name : null
+                                        };
+                                    });
+                                    const owners = modernTeamOwners.length > 0 ? modernTeamOwners : legacyTeamOwners;
+
                                     const isCaptOrVc = (p) => p.is_captain || p.id == team.captain_id || p.id == team.vice_captain_id;
                                     const captains = squad.filter(p => isCaptOrVc(p) && !p.is_icon);
                                     const icons = squad.filter(p => p.is_icon && !isCaptOrVc(p));
                                     const auctioned = squad.filter(p => !p.is_icon && !isCaptOrVc(p) && (p.sold_price > 0 || p.auction_status === 'sold'));
-                                    const playingSquad = squad.filter(p => !p.is_owner || (p.sold_price > 0 || p.auction_status === 'sold'));
+                                    const playingSquad = squad.filter(p => !p.is_owner || p.is_captain || p.is_icon || p.id == team.captain_id || p.id == team.vice_captain_id || (p.sold_price > 0 || p.auction_status === 'sold'));
                                     const isExpanded = !!expandedTeams[team.id];
 
                                     return (
@@ -314,15 +345,12 @@ const TeamBudgetPage = () => {
                                                     {owners.length > 0 && (
                                                         <div>
                                                             <span style={{ fontSize: '0.7rem', color: 'var(--accent-green)', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '0.25rem' }}>Owners</span>
-                                                            {owners.map(p => {
-                                                                const playingTeam = p.team_id && p.team_id !== team.id ? teams.find(t => t.id === p.team_id) : null;
-                                                                return (
-                                                                    <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-main)' }}>
-                                                                        <span>{p.players.first_name} {p.players.last_name} {playingTeam ? `(Bought by ${playingTeam.team_name})` : ''}</span>
-                                                                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{p.players.player_role}</span>
-                                                                    </div>
-                                                                );
-                                                            })}
+                                                            {owners.map(p => (
+                                                                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-main)' }}>
+                                                                    <span>{p.name} {p.bought_by ? `(Bought by ${p.bought_by})` : ''}</span>
+                                                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{p.role}</span>
+                                                                </div>
+                                                            ))}
                                                         </div>
                                                     )}
                                                     {captains.length > 0 && (
@@ -376,12 +404,29 @@ const TeamBudgetPage = () => {
                                     const maxBudget = activeAuction.max_budget || 0;
                                     const remaining = maxBudget - spent;
                                     const percentSpent = maxBudget > 0 ? Math.min((spent / maxBudget) * 100, 100) : 0;
-                                    const owners = allPlayers.filter(p => isTeamOwner(p, team.id));
+                                    
+                                    const modernTeamOwners = (teamOwnersMap[team.id] || []).map(mo => ({
+                                        id: `mod_${mo.id}`,
+                                        name: mo.owner_name,
+                                        role: 'Owner',
+                                        bought_by: null
+                                    }));
+                                    const legacyTeamOwners = allPlayers.filter(p => isTeamOwner(p, team.id)).map(p => {
+                                        const playingTeam = p.team_id && p.team_id !== team.id ? teams.find(t => t.id === p.team_id) : null;
+                                        return {
+                                            id: p.id,
+                                            name: `${p.players?.first_name || ''} ${p.players?.last_name || ''}`.trim() || 'Owner',
+                                            role: p.players?.player_role || 'Owner',
+                                            bought_by: playingTeam ? playingTeam.team_name : null
+                                        };
+                                    });
+                                    const owners = modernTeamOwners.length > 0 ? modernTeamOwners : legacyTeamOwners;
+
                                     const isCaptOrVc = (p) => p.is_captain || p.id == team.captain_id || p.id == team.vice_captain_id;
                                     const captains = squad.filter(p => isCaptOrVc(p) && !p.is_icon);
                                     const icons = squad.filter(p => p.is_icon && !isCaptOrVc(p));
                                     const auctioned = squad.filter(p => !p.is_icon && !isCaptOrVc(p) && (p.sold_price > 0 || p.auction_status === 'sold'));
-                                    const playingSquad = squad.filter(p => !p.is_owner || (p.sold_price > 0 || p.auction_status === 'sold'));
+                                    const playingSquad = squad.filter(p => !p.is_owner || p.is_captain || p.is_icon || p.id == team.captain_id || p.id == team.vice_captain_id || (p.sold_price > 0 || p.auction_status === 'sold'));
                                     const isExpanded = !!expandedTeams[team.id];
 
                                     return (
@@ -443,15 +488,12 @@ const TeamBudgetPage = () => {
                                                     {/* Owners block */}
                                                     <div>
                                                         <span style={{ fontSize: '0.7rem', color: 'var(--accent-green)', fontWeight: 'bold', textTransform: 'uppercase', display: 'block', marginBottom: '0.4rem', borderBottom: '1px solid rgba(57,255,20,0.1)', paddingBottom: '0.2rem' }}>Owners ({owners.length})</span>
-                                                        {owners.length === 0 ? <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>None</p> : owners.map(p => {
-                                                            const playingTeam = p.team_id && p.team_id !== team.id ? teams.find(t => t.id === p.team_id) : null;
-                                                            return (
-                                                                <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', padding: '0.15rem 0' }}>
-                                                                    <span>{p.players.first_name} {p.players.last_name} {playingTeam ? `(Bought by ${playingTeam.team_name})` : ''}</span>
-                                                                    <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{p.players.player_role}</span>
-                                                                </div>
-                                                            );
-                                                        })}
+                                                        {owners.length === 0 ? <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>None</p> : owners.map(p => (
+                                                            <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', padding: '0.15rem 0' }}>
+                                                                <span>{p.name} {p.bought_by ? `(Bought by ${p.bought_by})` : ''}</span>
+                                                                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{p.role}</span>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                     {/* Captains block */}
                                                     {captains.length > 0 && (

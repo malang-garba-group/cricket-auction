@@ -193,13 +193,20 @@ const LiveAuctionPage = () => {
                 nextBid = currentBid + basePrice;
             }
 
-            // Check team budget
+            // Check max players & team budget
+            const maxPlayers = activeAuction?.max_players || 11;
             const targetTeam = teams.find(t => t.id === teamId);
             const teamPlayers = players.filter(p => p.team_id === teamId);
             const spent = teamPlayers.reduce((acc, p) => acc + (p.sold_price || 0), 0);
 
+            const isAlreadyInTeam = activePlayer.team_id === teamId;
+            if (!isAlreadyInTeam && teamPlayers.length >= maxPlayers) {
+                alert(`Cannot place bid! ${targetTeam?.team_name || 'Team'} has already reached the maximum squad limit of ${maxPlayers} players.`);
+                return;
+            }
+
             if (spent + nextBid > activeAuction.max_budget) {
-                alert(`Insufficient budget! ${targetTeam.team_name} has only ${activeAuction.max_budget - spent} remaining.`);
+                alert(`Insufficient budget! ${targetTeam?.team_name || 'Team'} has only ${activeAuction.max_budget - spent} remaining.`);
                 return;
             }
 
@@ -261,7 +268,8 @@ const LiveAuctionPage = () => {
             return;
         }
 
-        // Check team budget
+        // Check max players & team budget
+        const maxPlayers = activeAuction?.max_players || 11;
         const teamId = customBidTeam;
         const targetTeam = teams.find(t => String(t.id) === String(teamId));
         if (!targetTeam) {
@@ -271,6 +279,12 @@ const LiveAuctionPage = () => {
 
         const teamPlayers = players.filter(p => String(p.team_id) === String(targetTeam.id));
         const spent = teamPlayers.reduce((acc, p) => acc + (p.sold_price || 0), 0);
+
+        const isAlreadyInTeam = activePlayer.team_id === targetTeam.id;
+        if (!isAlreadyInTeam && teamPlayers.length >= maxPlayers) {
+            alert(`Cannot place bid! ${targetTeam.team_name} has already reached the maximum squad limit of ${maxPlayers} players.`);
+            return;
+        }
 
         if (spent + bidAmount > activeAuction.max_budget) {
             alert(`Insufficient budget! ${targetTeam.team_name} has only ${activeAuction.max_budget - spent} remaining.`);
@@ -399,7 +413,18 @@ const LiveAuctionPage = () => {
 
     const finalizeSold = async () => {
         if (!activePlayer || !activePlayer.current_bid_team_id) return;
-        if (!window.confirm(`Mark ${activePlayer.players.first_name} as SOLD for ${activePlayer.current_bid_price}?`)) return;
+
+        const maxPlayers = activeAuction?.max_players || 11;
+        const targetTeam = teams.find(t => String(t.id) === String(activePlayer.current_bid_team_id));
+        const teamPlayers = players.filter(p => String(p.team_id) === String(activePlayer.current_bid_team_id));
+
+        const isAlreadyInTeam = activePlayer.team_id === activePlayer.current_bid_team_id;
+        if (!isAlreadyInTeam && teamPlayers.length >= maxPlayers) {
+            alert(`Cannot sell player! ${targetTeam?.team_name || 'Team'} has already reached the maximum squad limit of ${maxPlayers} players.`);
+            return;
+        }
+
+        if (!window.confirm(`Mark ${activePlayer.players.first_name} as SOLD for ₹${activePlayer.current_bid_price}?`)) return;
 
         try {
             setActionLoading(true);
@@ -703,32 +728,52 @@ const LiveAuctionPage = () => {
 
                                         <h4 style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>PLACE BID FOR:</h4>
                                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
-                                            {teams.map(team => (
-                                                <button
-                                                    key={team.id}
-                                                    onClick={() => placeBid(team.id)}
-                                                    disabled={actionLoading}
-                                                    className="btn btn-outline"
-                                                    style={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        alignItems: 'center',
-                                                        gap: '0.5rem',
-                                                        padding: '1rem',
-                                                        borderColor: team.id === activePlayer.current_bid_team_id ? 'var(--accent-gold)' : 'var(--border-color)',
-                                                        background: team.id === activePlayer.current_bid_team_id ? 'rgba(255,215,0,0.1)' : 'transparent'
-                                                    }}
-                                                >
-                                                    {team.logo_url ? (
-                                                        <img src={team.logo_url} alt="Logo" style={{ width: 40, height: 40, objectFit: 'contain' }} />
-                                                    ) : (
-                                                        <div style={{ width: 40, height: 40, borderRadius: '4px', background: 'var(--accent-gold)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                                                            {getTeamInitials(team.team_name)}
-                                                        </div>
-                                                    )}
-                                                    <span style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{team.team_name}</span>
-                                                </button>
-                                            ))}
+                                            {teams.map(team => {
+                                                 const maxPlayers = activeAuction?.max_players || 11;
+                                                 const squadCount = players.filter(p => p.team_id === team.id).length;
+                                                 const isFull = squadCount >= maxPlayers;
+                                                 const isCurrentBidder = team.id === activePlayer.current_bid_team_id;
+
+                                                 return (
+                                                     <button
+                                                         key={team.id}
+                                                         onClick={() => placeBid(team.id)}
+                                                         disabled={actionLoading || (isFull && !isCurrentBidder)}
+                                                         className="btn btn-outline"
+                                                         style={{
+                                                             display: 'flex',
+                                                             flexDirection: 'column',
+                                                             alignItems: 'center',
+                                                             gap: '0.4rem',
+                                                             padding: '0.8rem',
+                                                             position: 'relative',
+                                                             borderColor: isCurrentBidder ? 'var(--accent-gold)' : isFull ? '#ef4444' : 'var(--border-color)',
+                                                             background: isCurrentBidder ? 'rgba(255,215,0,0.15)' : isFull ? 'rgba(239,68,68,0.1)' : 'transparent',
+                                                             opacity: isFull && !isCurrentBidder ? 0.6 : 1,
+                                                             cursor: isFull && !isCurrentBidder ? 'not-allowed' : 'pointer'
+                                                         }}
+                                                     >
+                                                         {team.logo_url ? (
+                                                             <img src={team.logo_url} alt="Logo" style={{ width: 36, height: 36, objectFit: 'contain' }} />
+                                                         ) : (
+                                                             <div style={{ width: 36, height: 36, borderRadius: '4px', background: 'var(--accent-gold)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                                                                 {getTeamInitials(team.team_name)}
+                                                             </div>
+                                                         )}
+                                                         <span style={{ fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{team.team_name}</span>
+                                                         <span style={{
+                                                             fontSize: '0.7rem',
+                                                             fontWeight: 'bold',
+                                                             padding: '0.15rem 0.4rem',
+                                                             borderRadius: '4px',
+                                                             background: isFull ? 'rgba(239,68,68,0.25)' : 'rgba(255,255,255,0.08)',
+                                                             color: isFull ? '#ef4444' : 'var(--text-muted)'
+                                                         }}>
+                                                             {isFull ? `FULL (${squadCount}/${maxPlayers})` : `Squad: ${squadCount}/${maxPlayers}`}
+                                                         </span>
+                                                     </button>
+                                                 );
+                                             })}
                                         </div>
 
                                         <div style={{ display: 'flex', gap: '1.5rem', marginTop: '3rem', justifyContent: 'center' }}>

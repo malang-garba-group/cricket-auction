@@ -39,7 +39,8 @@ const AuctionPage = () => {
     number_of_icon: '',
     number_of_owner: '',
     base_price: '',
-    max_budget: ''
+    max_budget: '',
+    max_players: ''
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -88,6 +89,7 @@ const AuctionPage = () => {
       number_of_owner: auction.number_of_owner || '',
       base_price: auction.base_price || '',
       max_budget: auction.max_budget || '',
+      max_players: auction.max_players || '',
       logo: null, // Don't reload file objects
       qr_code: null
     });
@@ -144,6 +146,7 @@ const AuctionPage = () => {
         number_of_owner: formData.number_of_owner ? parseInt(formData.number_of_owner, 10) : null,
         base_price: formData.base_price ? parseFloat(formData.base_price) : null,
         max_budget: formData.max_budget ? parseFloat(formData.max_budget) : null,
+        max_players: formData.max_players ? parseInt(formData.max_players, 10) : null,
         auction_logo,
         qr_code_url
       };
@@ -249,6 +252,10 @@ const AuctionPage = () => {
                 <input type="number" name="max_budget" value={formData.max_budget} onChange={handleChange} className="form-input" placeholder="e.g. 100000" min="0" />
               </div>
               <div className="form-group">
+                <label className="form-label">Max Players Per Team</label>
+                <input type="number" name="max_players" value={formData.max_players} onChange={handleChange} className="form-input" placeholder="e.g. 11" min="1" />
+              </div>
+              <div className="form-group">
                 <label className="form-label">Status *</label>
                 <select required name="status" value={formData.status} onChange={handleChange} className="form-select">
                   <option value="draft">Draft (Hidden)</option>
@@ -324,7 +331,7 @@ const AuctionPage = () => {
                         </td>
                         <td style={{ padding: '1rem' }}>
                           <div>Budget: <span style={{ fontWeight: 'bold' }}>{a.max_budget ? `₹${a.max_budget}` : '-'}</span></div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Base Price: {a.base_price ? `₹${a.base_price}` : '-'}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Max Players: {a.max_players || 11} | Base Price: {a.base_price ? `₹${a.base_price}` : '-'}</div>
                         </td>
                         <td style={{ padding: '1rem', fontWeight: 'bold', color: 'var(--accent-green)' }}>
                           {a.per_player_fees ? `₹${a.per_player_fees}` : '-'}
