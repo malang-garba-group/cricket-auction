@@ -121,7 +121,7 @@ const TeamBudgetPage = () => {
         fetchAuctionData();
     }, [auctionCodeParam]);
 
-    const toggleRoster = (teamId) => {
+    const toggleSquad = (teamId) => {
         setExpandedTeams(prev => ({
             ...prev,
             [teamId]: !prev[teamId]
@@ -419,15 +419,15 @@ const TeamBudgetPage = () => {
                                             {/* Action Buttons */}
                                             <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                                 <button 
-                                                    onClick={() => toggleRoster(team.id)} 
+                                                    onClick={() => toggleSquad(team.id)} 
                                                     className="btn btn-outline" 
                                                     style={{ width: '100%', fontSize: '0.8rem', padding: '0.4rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.25rem' }}
                                                 >
-                                                    {isExpanded ? 'Hide Roster ▲' : 'View Roster ▼'}
+                                                    {isExpanded ? 'Hide Squad ▲' : 'View Squad ▼'}
                                                 </button>
                                             </div>
 
-                                            {/* Collapsible Roster details */}
+                                            {/* Collapsible Squad details */}
                                             {isExpanded && (
                                                 <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem', animation: 'fadeIn 0.2s ease' }}>
                                                     {owners.length > 0 && (
@@ -475,7 +475,7 @@ const TeamBudgetPage = () => {
                                                         </div>
                                                     )}
                                                     {squad.length === 0 && (
-                                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontStyle: 'italic', margin: 0 }}>Roster is empty.</p>
+                                                        <p style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontStyle: 'italic', margin: 0 }}>Squad is empty.</p>
                                                     )}
                                                 </div>
                                             )}
@@ -561,16 +561,16 @@ const TeamBudgetPage = () => {
                                                 {/* Action Button */}
                                                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                                     <button 
-                                                        onClick={() => toggleRoster(team.id)} 
+                                                        onClick={() => toggleSquad(team.id)} 
                                                         className="btn btn-outline" 
                                                         style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                                                     >
-                                                        {isExpanded ? 'Hide Roster ▲' : 'View Roster ▼'}
+                                                        {isExpanded ? 'Hide Squad ▲' : 'View Squad ▼'}
                                                     </button>
                                                 </div>
                                             </div>
 
-                                            {/* Roster lists in horizontal list blocks */}
+                                            {/* Squad lists in horizontal list blocks */}
                                             {isExpanded && (
                                                 <div style={{ width: '100%', marginTop: '1.2rem', paddingTop: '1.2rem', borderTop: '1px solid var(--glass-border)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', animation: 'fadeIn 0.2s ease' }}>
                                                     {/* Owners block */}

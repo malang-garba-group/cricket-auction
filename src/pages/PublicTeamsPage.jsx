@@ -643,7 +643,7 @@ const PublicTeamsPage = () => {
                                 </div>
                             ) : (
                                 <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: '1.2rem', fontWeight: 'bold' }}>
-                                    SELECT A TEAM TO VIEW ROSTER
+                                    SELECT A TEAM TO VIEW SQUAD
                                 </div>
                             )}
                         </div>

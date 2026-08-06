@@ -56,7 +56,7 @@ const TeamDetailsPage = () => {
         }
     };
 
-    const toggleRoster = (teamId) => {
+    const toggleSquad = (teamId) => {
         setExpandedTeams(prev => ({
             ...prev,
             [teamId]: !prev[teamId]
@@ -165,7 +165,7 @@ const TeamDetailsPage = () => {
         const purchased = squad.filter(p => !p.is_icon && !isCaptOrVc(p) && (p.sold_price > 0 || p.auction_status === 'sold'));
         const legacyOwners = allPlayers.filter(p => isTeamOwner(p, team.id));
 
-        let msg = `🏏 *${team.team_name.toUpperCase()} - OFFICIAL SQUAD PDF & ROSTER*\n`;
+        let msg = `🏏 *${team.team_name.toUpperCase()} - OFFICIAL TEAM SQUAD*\n`;
         if (activeAuction?.auction_name) {
             msg += `🏆 Event: *${activeAuction.auction_name}*\n`;
         }
@@ -230,13 +230,13 @@ const TeamDetailsPage = () => {
             const doc = await generateSingleTeamPDF(activeAuction, team, squad, { saveFile: false, returnDoc: true });
             if (doc) {
                 const pdfBlob = doc.output('blob');
-                const filename = `${team.team_name.replace(/ /g, '_')}_Squad_Roster.pdf`;
+                const filename = `${team.team_name.replace(/ /g, '_')}_Team_Squad.pdf`;
                 const pdfFile = new File([pdfBlob], filename, { type: 'application/pdf' });
 
                 // Try Web Share API (mobile & supported browsers)
                 if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
                     await navigator.share({
-                        title: `${team.team_name} Squad Roster PDF`,
+                        title: `${team.team_name} Team Squad PDF`,
                         text: msg,
                         files: [pdfFile]
                     });
@@ -245,7 +245,7 @@ const TeamDetailsPage = () => {
                 
                 // Fallback for desktop: download PDF file + open WhatsApp Web pre-filled with text & note
                 doc.save(filename);
-                msg += `\n📎 *Note: The official team PDF roster has been downloaded to your device as "${filename}". Attach it directly into this WhatsApp chat!*`;
+                msg += `\n📎 *Note: The official team squad PDF has been downloaded to your device as "${filename}". Attach it directly into this WhatsApp chat!*`;
             }
         } catch (err) {
             console.warn("Share API error fallback:", err);
@@ -350,7 +350,7 @@ const TeamDetailsPage = () => {
 
     if (!isAuthenticated) return <Navigate to="/admin" replace />;
     if (!auctionCode || (!loading && !activeAuction)) return <Navigate to="/admin" replace />;
-    if (loading) return <Loader message="ORGANIZING TEAM ROSTERS..." />;
+    if (loading) return <Loader message="ORGANIZING TEAM SQUADS..." />;
 
     const selectedTeam = teams.find(t => t.id === selectedTeamId);
     const squad = selectedTeamId ? (squads[selectedTeamId] || []) : [];
@@ -376,7 +376,7 @@ const TeamDetailsPage = () => {
     return (
         <div className="flex-col min-h-screen">
             <div className="spotlight"></div>
-            <PageHeader title="Team Roster & Purse" showLogos={false} />
+            <PageHeader title="Team Squad & Purse" showLogos={false} />
 
             <main className="container-fluid" style={{ flex: 1, padding: '2rem 2rem 4rem', zIndex: 1, position: 'relative', width: '100%', maxWidth: '1600px', margin: '0 auto' }}>
                 {/* Header Controls */}
@@ -453,7 +453,7 @@ const TeamDetailsPage = () => {
                 <div className="glass-panel" style={{ padding: '1.5rem 2rem', marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', border: '1px solid rgba(255,215,0,0.2)' }}>
                     <div>
                         <h2 style={{ color: '#fff', margin: 0, fontSize: '1.5rem', textTransform: 'uppercase', fontFamily: 'var(--font-heading)' }}>{activeAuction.auction_name} - TEAM BUDGETS</h2>
-                        <p style={{ color: 'var(--text-muted)', margin: '0.2rem 0 0 0', fontSize: '0.85rem' }}>Overview of all team purses, spend progress, squad limits, owner WhatsApp contacts, and PDF rosters.</p>
+                        <p style={{ color: 'var(--text-muted)', margin: '0.2rem 0 0 0', fontSize: '0.85rem' }}>Overview of all team purses, spend progress, squad limits, owner WhatsApp contacts, and PDF squad files.</p>
                     </div>
                     <div style={{ display: 'flex', gap: '1.5rem' }}>
                         <div>
@@ -589,7 +589,7 @@ const TeamDetailsPage = () => {
                                                 onClick={() => handleShareWhatsApp(team)}
                                                 className="btn"
                                                 style={{ fontSize: '0.7rem', padding: '0.4rem 0.3rem', background: '#25D366', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.2rem', fontWeight: 'bold' }}
-                                                title="Share Text Roster on WhatsApp"
+                                                title="Share Squad Details on WhatsApp"
                                             >
                                                 💬 Text
                                             </button>
@@ -612,15 +612,15 @@ const TeamDetailsPage = () => {
                                         </div>
 
                                         <button 
-                                            onClick={() => toggleRoster(team.id)} 
+                                            onClick={() => toggleSquad(team.id)} 
                                             className="btn btn-outline" 
                                             style={{ width: '100%', fontSize: '0.8rem', padding: '0.4rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.25rem' }}
                                         >
-                                            {isExpanded ? 'Hide Roster ▲' : 'View Roster ▼'}
+                                            {isExpanded ? 'Hide Squad ▲' : 'View Squad ▼'}
                                         </button>
                                     </div>
 
-                                    {/* Collapsible Roster details */}
+                                    {/* Collapsible Squad details */}
                                     {isExpanded && (
                                         <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--glass-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem', animation: 'fadeIn 0.2s ease' }}>
                                             {owners.length > 0 && (
@@ -773,7 +773,7 @@ const TeamDetailsPage = () => {
                                                 onClick={() => handleShareWhatsApp(team)}
                                                 className="btn"
                                                 style={{ fontSize: '0.75rem', padding: '0.4rem 0.6rem', background: '#25D366', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 'bold' }}
-                                                title="Share Text Roster on WhatsApp"
+                                                title="Share Squad Details on WhatsApp"
                                             >
                                                 💬 Text WhatsApp
                                             </button>
@@ -794,16 +794,16 @@ const TeamDetailsPage = () => {
                                                 📄 Save PDF
                                             </button>
                                             <button 
-                                                onClick={() => toggleRoster(team.id)} 
+                                                onClick={() => toggleSquad(team.id)} 
                                                 className="btn btn-outline" 
                                                 style={{ fontSize: '0.8rem', padding: '0.4rem 1rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                                             >
-                                                {isExpanded ? 'Hide Roster ▲' : 'View Roster ▼'}
+                                                {isExpanded ? 'Hide Squad ▲' : 'View Squad ▼'}
                                             </button>
                                         </div>
                                     </div>
 
-                                    {/* Roster lists in horizontal list blocks */}
+                                    {/* Squad lists in horizontal list blocks */}
                                     {isExpanded && (
                                         <div style={{ width: '100%', marginTop: '1.2rem', paddingTop: '1.2rem', borderTop: '1px solid var(--glass-border)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', animation: 'fadeIn 0.2s ease' }}>
                                             {/* Owners block */}
@@ -978,9 +978,9 @@ const TeamDetailsPage = () => {
                                                         boxShadow: '0 4px 12px rgba(37,211,102,0.3)',
                                                         cursor: 'pointer'
                                                     }}
-                                                    title="Share Text Roster on WhatsApp"
+                                                    title="Share Squad Details on WhatsApp"
                                                 >
-                                                    💬 Text Roster
+                                                    💬 Squad Text
                                                 </button>
                                                 <button
                                                     onClick={() => handleSendPdfWhatsApp(selectedTeam)}
@@ -1020,7 +1020,7 @@ const TeamDetailsPage = () => {
                                                         gap: '0.25rem',
                                                         cursor: 'pointer'
                                                     }}
-                                                    title="Download PDF Roster for this Team"
+                                                    title="Download PDF Squad for this Team"
                                                 >
                                                     📄 Save PDF
                                                 </button>
@@ -1131,7 +1131,7 @@ const TeamDetailsPage = () => {
                                 </div>
                             ) : (
                                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                                    Select a team to view its squad roster and purse budget details.
+                                    Select a team to view its squad and purse budget details.
                                 </div>
                             )}
                         </div>

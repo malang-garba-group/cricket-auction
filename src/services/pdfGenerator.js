@@ -342,7 +342,7 @@ export const generateAllTeamsPDF = async (activeAuction, teams, squads, options 
   }
 
   if (saveFile) {
-    const filename = customFilename || `All_Teams_Roster_${activeAuction?.auction_name?.replace(/ /g, '_') || 'List'}.pdf`;
+    const filename = customFilename || `All_Teams_Squad_${activeAuction?.auction_name?.replace(/ /g, '_') || 'List'}.pdf`;
     doc.save(filename);
   }
   return doc;

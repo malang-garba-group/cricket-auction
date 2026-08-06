@@ -430,7 +430,7 @@ const LandingPage = () => {
             <div className="landing-step-number">04</div>
             <h3 className="landing-step-title">Play Tournament</h3>
             <p className="landing-step-desc">
-              Finalize rosters, review team compositions, export squad reports, and initiate the tournament!
+              Finalize team squads, review team compositions, export squad reports, and initiate the tournament!
             </p>
           </div>
         </div>
@@ -491,7 +491,7 @@ const LandingPage = () => {
           <div className="landing-cta-icon">🏆</div>
           <h2 className="landing-cta-title">READY TO HOST YOUR AUCTION?</h2>
           <p className="landing-cta-desc">
-            Access the administrator panel to configure auctions, authorize new player signups, build rosters, and manage live auction operations.
+            Access the administrator panel to configure auctions, authorize new player signups, build team squads, and manage live auction operations.
           </p>
           <Link to="/admin" className="landing-btn-glow">
             Access Admin Console <ArrowRight size={16} />

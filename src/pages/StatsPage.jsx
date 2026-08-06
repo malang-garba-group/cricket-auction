@@ -390,7 +390,7 @@ const StatsPage = () => {
                     /* Tab 2: All Players sorted by price */
                     <div className="glass-panel" style={{ padding: '2rem' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
-                            <h2 style={{ color: 'var(--accent-gold)', margin: 0 }}>Roster Ledger (Expensive First)</h2>
+                            <h2 style={{ color: 'var(--accent-gold)', margin: 0 }}>Squad Players Ledger (Expensive First)</h2>
                             <div style={{ width: '100%', maxWidth: '350px' }}>
                                 <input
                                     type="text"

@@ -31,6 +31,7 @@ const AdminInvitationsPage = React.lazy(() => import('./pages/AdminInvitationsPa
 const AdminSponsorsPage = React.lazy(() => import('./pages/AdminSponsorsPage'));
 const AdminOwnersPage = React.lazy(() => import('./pages/AdminOwnersPage'));
 const RandomDrawPage = React.lazy(() => import('./pages/RandomDrawPage'));
+const PricingPage = React.lazy(() => import('./pages/PricingPage'));
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/pricing" element={<PricingPage />} />
           <Route path="/register" element={<RegistrationPage />} />
           <Route path="/live-auction-projector" element={<LiveAuctionProjectorPage />} />
           <Route path="/all-players" element={<PublicPlayersPage />} />

@@ -132,7 +132,7 @@ const AdminPage = () => {
 
           <Link to={`/players${codeParam}`} className="glass-panel render-card" style={{ padding: '3rem 2rem', textAlign: 'center', textDecoration: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
             <div style={{ fontSize: '3.5rem' }}>📋</div>
-            <h3 style={{ color: 'var(--text-main)', margin: 0, fontSize: '1.5rem' }}>Public Roster</h3>
+            <h3 style={{ color: 'var(--text-main)', margin: 0, fontSize: '1.5rem' }}>Public Players List</h3>
             <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem', lineHeight: 1.5 }}>Preview the live public-facing grid of all approved players.</p>
           </Link>
 
